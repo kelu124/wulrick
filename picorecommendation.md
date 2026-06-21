@@ -109,3 +109,128 @@ WULPUS was designed for a completely different use case (wearable, ambulatory mo
 | Enable GitHub Discussions | Trivial | Medium — reduces single-author bus factor | No |
 
 All five recommendations are feasible without changing the core hardware (ADC, pulser, amplifier, RP2040). They address usability gaps that are real, well-documented, and validated by WULPUS's design choices. None require the power/wireless tradeoffs that define WULPUS's architecture.
+
+---
+
+## Part 3: Software and Firmware Recommendations
+
+*Drawn from the WULPUS codebase, WULPUS published workflows (IEEE IUS 2022–2023, TBioCAS 2024), and WULPUS GitHub Discussions (#20, #34) and Issues (#13, #23).*
+
+### SW-1: Acquisition configuration as a typed dataclass, not CLI strings
+
+**Current pic0rick approach:** Acquisition parameters are passed as positional CLI arguments over serial: `start acq <pon_ns> <poff_ns> <damp_ns>`. Gain is set separately with `write dac <value>`. There is no structured representation of an "acquisition configuration" as a Python object.
+
+**What WULPUS does:** `WulpusUssConfig` is a Python dataclass holding all acquisition parameters — PRF, sample count, pulse frequency, pulse count, duty cycle, gain, timing margins, and up to 16 TX/RX channel slot definitions. It serializes to a 68-byte binary package sent to the probe. A configuration is a first-class object: it can be saved, loaded, versioned, compared, and logged alongside the data it produced.
+
+**Recommendation:** Add an `AcquisitionConfig` dataclass to pic0lib:
+```python
+@dataclass
+class AcquisitionConfig:
+    pon_ns: int = 200
+    poff_ns: int = 200
+    damp_ns: int = 2000
+    gain_dac: int = 512        # 10-bit, 0–1023
+    transducer_id: str = ""
+    note: str = ""
+```
+`Pic0rick.acquire(config)` sends the parameters, reads the buffer, and returns an `AcquisitionResult` containing both the numpy array and the config that produced it. This config object is then stored in the HDF5 file alongside the data. Benefit: you can always reconstruct exactly how a stored trace was acquired. WULPUS's published papers all rely on this property — reproducible acquisition parameters are required for peer review.
+
+---
+
+### SW-2: Hilbert envelope as a first-class output in pic0lib
+
+**Current pic0rick approach:** The `ndt_acquisition.py` module applies a Butterworth bandpass filter and plots raw + filtered signals. Envelope detection (Hilbert transform) is not part of the standard output — users must implement it separately using `scipy.signal.hilbert`.
+
+**What WULPUS does:** The GUI (`gui.py`) computes and displays three simultaneous traces for every acquired frame: raw RF, bandpass-filtered RF (31-tap Remez FIR via `filtfilt`), and Hilbert envelope. The envelope trace is the primary clinical display — it shows echo amplitude as a function of depth without the RF carrier oscillation, making reflector positions visually unambiguous.
+
+**Recommendation:** Add `pic0lib.processing.envelope(samples, fs, f_low, f_high)` that returns `(filtered, envelope)` — bandpass-filtered signal and its Hilbert magnitude. Wire this into the `AcquisitionResult` object so that `result.envelope` is available immediately after acquisition without writing signal processing code. The implementation is 5 lines of scipy; the value is that it becomes the default output, not something users discover after reading forum posts.
+
+This is validated by the WULPUS discussions: users in bring-up (#20) would have immediately seen from the envelope whether they were receiving echoes at all, rather than trying to interpret raw RF data with saturated early-time artifacts.
+
+---
+
+### SW-3: Configurable bandpass filter with transducer-aware defaults
+
+**Current pic0rick approach:** `ndt_acquisition.py` applies a 4th-order Butterworth bandpass via `sosfiltfilt`. The filter cutoffs are not exposed as API parameters — users must edit the source to change them.
+
+**What WULPUS does:** The GUI provides slider-adjustable bandpass filter cutoffs (0.1–0.9 × Nyquist), implemented as a 31-tap Remez FIR filter recomputed on parameter change. The filter parameters are also stored in the `WulpusUssConfig` serialization.
+
+**Recommendation:** Make bandpass cutoffs first-class parameters in `AcquisitionConfig` (or a companion `FilterConfig`). Provide sensible transducer-frequency-aware defaults — e.g., for a 5 MHz transducer at 65 Msps, default passband 2–8 MHz. Expose a `set_transducer(center_freq_mhz, bandwidth_fraction=0.7)` helper that automatically sets `pon_ns`, `poff_ns`, and filter cutoffs for the specified transducer. WULPUS's papers all specify the filter parameters used; being able to reproduce a result requires that the filter is part of the stored configuration.
+
+---
+
+### SW-4: M-mode display
+
+**What WULPUS does:** Not implemented. A user in Discussion #20 explicitly asked whether WULPUS supports M-mode; the question went unanswered. WULPUS's GUI shows A-mode (single frame, amplitude vs depth) and B-mode (8-channel synthetic aperture spatial image). Neither of these is M-mode.
+
+**What M-mode is:** M-mode (Motion mode) is a time series of a single depth gate across many sequential acquisitions. It displays depth on the Y-axis and time on the X-axis, showing how the position of a reflector evolves over time. It is the standard display for cardiac wall motion, carotid pulsation, and muscle thickness change over time.
+
+**Recommendation for pic0rick:** Add `pic0lib.display.mmode(frames, gate_start_ns, gate_end_ns, fs, prf)` that slices a sequence of A-mode frames at a specified depth gate and renders the time-series as a 2D image. This is directly useful for pic0rick's NDT applications: monitoring back-wall position over time reveals thermal drift, material deformation, and multi-layer delamination. It is also directly applicable to the cardiorespiratory use case demonstrated by WULPUS papers (Papers #3 and #7 in `w_uses.md` both rely on M-mode-style time series of arterial wall position). The implementation is a 2D numpy stack — the complexity is in the display, not the data.
+
+---
+
+### SW-5: Pulse parameter sweep with automated quality scoring
+
+**Current pic0rick approach:** `ndt_acquisition.py` includes a grid search over `(pon, poff)` space (`grid_search_pulse_params`). This is already a strong feature. However, the quality metric used (signal-to-noise ratio of the back-wall echo) requires prior knowledge of where the back-wall echo should appear.
+
+**WULPUS bring-up insight (Discussion #20, #34):** The most common failure mode for new WULPUS users is incorrect HV MUX timing — functionally equivalent to pic0rick's `damp_ns` being too short or too long. In both cases, there is no feedback to the user about which timing parameter is wrong. WULPUS has no automated pulse parameter sweep; users tune by hand via oscilloscope.
+
+**Recommendation:** Extend pic0rick's existing grid search with two additional automated quality metrics:
+1. **Echo presence score:** Does any window beyond the initial saturation zone contain a signal peak above N × noise floor? (Binary pass/fail, does not require knowing echo depth.)
+2. **Ringing duration:** How many samples after the pulse is the signal above a threshold? Shorter ringing = better damping = better near-surface resolution. This directly measures whether `damp_ns` is tuned correctly.
+
+These two metrics together allow automated bring-up: `pic0lib.sweep.auto_tune(transducer_freq_mhz)` runs a grid search and returns the (pon, poff, damp) triple that minimizes ringing while maximizing echo presence. This would have resolved both Discussion #20 and Discussion #34 in minutes rather than days of back-and-forth.
+
+---
+
+### SW-6: Per-frame metadata and provenance logging
+
+**Current pic0rick approach:** HDF5 storage includes acquisition metadata. However, the metadata schema is not strictly enforced — fields are optional and the format is not version-controlled.
+
+**What WULPUS does:** Each frame carries a 3-byte header (2-byte acquisition number + 1-byte TX/RX config ID) before the 800-byte RF payload. At the host side, every saved `.npz` file is auto-numbered (`data_0.npz`, `data_1.npz`…) but does not embed the configuration that produced it. This is actually a weakness of WULPUS that WULPUS papers work around by saving the config separately.
+
+**Recommendation:** Define a versioned metadata schema for pic0rick HDF5 files:
+```
+/acquisitions/{key}/
+    data         — numpy array (samples × 1)
+    config       — JSON-serialized AcquisitionConfig
+    timestamp    — ISO 8601
+    firmware_ver — string (queried from device at connect time)
+    lib_ver      — pic0lib version string
+    notes        — free text
+```
+Add `Pic0rick.firmware_version()` — a serial command that returns the firmware version string. Store it in every HDF5 file. This is the minimum needed to trace any future result back to the exact software and hardware configuration that produced it, which is a requirement for any published experimental result.
+
+WULPUS's peer-reviewed papers all include explicit firmware revision numbers in their methods sections. pic0rick's published demos do not — this is a reproducibility gap that a versioned schema would close.
+
+---
+
+### SW-7: Makefile / non-IDE build for firmware
+
+**Current pic0rick approach:** The firmware uses Pico SDK + CMake, which is already significantly better than WULPUS's three-IDE requirement. However, the build instructions are not prominently documented, and the development environment setup assumes familiarity with CMake and the Pico SDK toolchain.
+
+**WULPUS issue insight (#23):** A core WULPUS contributor (CedricHirschi) opened an issue requesting Makefile-based compilation as an alternative to the IDEs. The issue notes that TI's online CCS (`dev.ti.com/ide`) now works for MSP430 builds without a local install — but this was not in the documentation.
+
+**Recommendation for pic0rick:** Add a `firmware/BUILD.md` documenting the exact CMake commands to build without an IDE:
+```bash
+mkdir build && cd build
+cmake .. -DPICO_SDK_PATH=/path/to/pico-sdk
+make -j4
+```
+This takes 10 minutes to write and removes the IDE requirement entirely. The CMake build already works — it just isn't documented as the primary path. Additionally, document the UF2 drag-and-drop flash method (Pico bootloader) as the default flashing approach, which requires no debugger. WULPUS users spend significant time on JTAG programmer setup; pic0rick avoids this entirely but doesn't highlight it.
+
+---
+
+### Software Recommendations Summary
+
+| Recommendation | Effort | Source of insight | Impact |
+|----------------|--------|-------------------|--------|
+| SW-1: `AcquisitionConfig` dataclass | Low (Python) | WULPUS `WulpusUssConfig` | High — reproducible configurations |
+| SW-2: Hilbert envelope as default output | Very low (Python) | WULPUS GUI, Discussion #20 | High — standard US display |
+| SW-3: Configurable bandpass with transducer defaults | Low (Python) | WULPUS GUI, published methods | Medium — filter reproducibility |
+| SW-4: M-mode display | Low (Python) | WULPUS gap + Discussion #20 unanswered | Medium — cardiac/NDT time series |
+| SW-5: Automated pulse tuning (ringing + echo metrics) | Medium (Python) | Discussions #20, #34 | High — eliminates bring-up failures |
+| SW-6: Versioned HDF5 metadata schema | Low (Python) | WULPUS paper methodology | Medium — reproducibility for publication |
+| SW-7: Document CMake/UF2 build path | Trivial (docs) | WULPUS Issue #23 | Medium — lowers firmware barrier |
+
+SW-1 through SW-3 are prerequisites for any published result from pic0rick. SW-5 directly addresses the most common failure mode documented in WULPUS's community threads and would have reduced bring-up time from days to minutes for multiple users.
