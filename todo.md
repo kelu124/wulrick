@@ -21,46 +21,38 @@
   - Power: ~300–400 mW estimated USB-tethered (pic0rick) vs 22 mW measured battery (WULPUS)
   - Timing: RP2040 PIO (flexible) vs MSP430 USS_A sequencer (automated, efficient)
   - Connectivity: USB High Speed (pic0rick) vs BLE 320 kbps via nRF52832 (WULPUS)
+- [x] Phase 2 complete: `phase2.md` written and pushed
+  - Master performance table: 65 Msps vs 8 Msps, 48 dB TGC vs 40.8 dB fixed, ±24V vs +15V, 22 mW vs ~300–400 mW
+  - Flagged uncharacterized specs: system SNR, dynamic range, imaging depth not published for either device
+  - ADC10065 alone (68.4 mW) exceeds WULPUS total system power (22 mW)
+  - WULPUS-Pro (successor) noted: 16 ch, +30V, TGC, CMUT bias
+- [x] Phase 3 complete: `phase3.md` written and pushed
+  - Firmware: 1 PIO+C project (pic0rick) vs 3 C projects / 3 toolchains (WULPUS)
+  - Host software: pic0lib Python API (numpy, HDF5, Jupyter) vs WulpusUssConfig dataclass + 68-byte binary protocol + ipywidgets GUI
+  - WULPUS frame format documented: START\n + 2-byte acq num + 1-byte config ID + 800 bytes RF data
+  - Customization barrier: pulse timing configurable from Python host (both); acquisition sequence requires C firmware edit (both)
+- [x] Phase 4 complete: `phase4.md` written and pushed
+  - pic0rick strengths: 65 Msps transducer range, TGC, PMOD modularity, Python-first, OSHWA, ecosystem
+  - pic0rick weaknesses: USB-only, single channel base, power uncharacterized, not medical-grade, single author
+  - WULPUS strengths: 22 mW, 8 channels, BLE, 9g, IEEE publications, ETH Zurich backing
+  - WULPUS weaknesses: 8 Msps ceiling, fixed gain, BLE cap, 3 C toolchains, Altium lock-in
+  - Published benchmarks table: pic0rick unmatched on frequency range; WULPUS unmatched on biomedical validation
+- [x] Phase 5 complete: `phase5.md` written and pushed
+  - Licenses: TAPR OHL + GPLv3 (pic0rick, copyleft) vs SHL-0.51 + Apache 2.0 (WULPUS, permissive)
+  - PCB tools: KiCad free (pic0rick) vs Altium ~$10k/yr (WULPUS)
+  - Costs: pic0rick DIY $100–$200, Tindie ~$200–$400; WULPUS DIY $250–$500, no pre-built
+  - Community: 71 stars / 1 contributor / Matrix (pic0rick) vs 110 stars / 3 contributors / GitHub Discussions (WULPUS)
+  - Reproduceability: both achievable; pic0rick easier (KiCad, JLCPCB-ready, Tindie)
+- [x] Phase 6 complete: `phase6.md` written and pushed
+  - Master comparison table across hardware, power, form factor, performance, software, openness, cost, community
+  - Per-device summary cards with core technical identity, target user, excels/falls-short
+  - 6 key differentiating design decisions with explicit tradeoff rationale
+  - Gap analysis: 11 identified gaps (SNR, ENOB, PRF, resolution, imaging depth, HV mux part, etc.)
+  - Cross-pollination notes: what each project could adopt from the other
+  - Decision guide table: 16 use-case rows with recommended device
 
 ---
 
 ## To Do
 
-### Phase 2 — Hardware Performance
-
-- [ ] Compile key performance figures (single comparison table from datasheets + papers)
-- [ ] Flag uncharacterized specs
-- [ ] Collect SNR, dynamic range, imaging depth, resolution from published papers
-
-### Phase 3 — Software and Firmware
-
-- [ ] Survey pyUn0-lib API and documentation
-- [ ] Survey WULPUS firmware repo structure and acquisition configuration
-- [ ] Compare MicroPython vs C toolchain for customization ease
-- [ ] Evaluate WULPUS Python GUI scope
-- [ ] Trace and document full data pipelines for both devices
-
-### Phase 4 — Strengths, Weaknesses, Specificities
-
-- [ ] Verify and quantify pic0rick weaknesses (USB-only, single channel, power unknown)
-- [ ] Investigate pic0rick specificities (PIO timing ceiling, three-level pulser implications)
-- [ ] Verify and quantify WULPUS weaknesses (8 Msps limit, fixed gain, BLE ceiling)
-- [ ] Investigate WULPUS specificities (MSP430 USS constraints, dual-MCU overhead)
-- [ ] Extract quantitative benchmarks from Zenodo paper (pic0rick) and IEEE UFFC 2022 (WULPUS)
-
-### Phase 5 — Openness, Community, Cost
-
-- [ ] Verify pic0rick PCB tool; check Gerber exports
-- [ ] Check WULPUS Altium export formats available
-- [ ] Confirm pic0rick BOM cost (Tindie + component BOM)
-- [ ] Estimate WULPUS BOM cost
-- [ ] GitHub activity audit for both repos
-- [ ] Find community channels
-
-### Phase 6 — Synthesis
-
-- [ ] Master comparison table (all functional blocks + performance + ecosystem)
-- [ ] Per-device strengths/weaknesses/specificities summary
-- [ ] Key differentiating design decisions
-- [ ] Gap analysis
-- [ ] Cross-pollination notes
+*All phases complete.*
