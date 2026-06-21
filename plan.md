@@ -247,6 +247,121 @@ A per-device assessment — not comparative ranking but clear-eyed characterizat
 
 ---
 
+## Phase 7: Array Multiplexers
+
+*Comparing the MAX14866 8-channel HV analog switch (pic0rick PMOD) with the WULPUS HV mux approach. Addresses what each architecture enables and limits for multi-element array imaging.*
+
+---
+
+### 7.1 MAX14866 (pic0rick PMOD)
+
+The MAX14866 is an 8-channel high-voltage analog switch IC used in pic0rick's mux PMOD board.
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Manufacturer | Maxim/Analog Devices | Part of the MAX14xxx HV switch family |
+| Channel count | 8 | Single IC; cascadable via SPI |
+| HV tolerance | ±80V | Protects receive inputs from transmit transients |
+| ON resistance (RON) | ~100–250 Ω | Depends on supply voltage; higher than signal-path VGAs |
+| Switching speed | <500 ns | Time from SPI command to channel active |
+| Control interface | SPI (3-wire: CSB, SDI, SCLK) | 16-bit shift register |
+| Supply voltage | Up to ±40V logic + HV supply | Separate HV and logic rails |
+| Package | 28-pin TSSOP | Board area ~30 mm² |
+| Unit price (est.) | ~$8–12 (qty 1) | Premium for HV tolerance |
+
+**How pic0rick uses it:** The MAX14866 PMOD plugs into pic0rick's PMOD header. The RP2040 controls the mux via SPI, selecting which of the 8 channels is active for TX/RX. This enables sequential single-element firing across up to 8 transducers, or multi-element switching for basic synthetic aperture experiments. The wide ±80V tolerance accommodates pic0rick's ±24V transmit pulses with substantial margin.
+
+**Cascading:** Multiple MAX14866 PMODs can be chained via PMOD daisy-chain or additional SPI chip selects. SPI daisy-chaining two boards yields 16 channels. Each additional board adds 8 channels at the cost of one more SPI transaction per frame. At 16 MHz SPI, four boards (32 channels) can be configured in <10 µs — well within any inter-acquisition window.
+
+---
+
+### 7.2 WULPUS HV Mux (Probable HV2707T-C/R8X or equivalent)
+
+WULPUS's HV PCB uses an SPI-controlled 8-channel HV multiplexer. The part has been provisionally identified as the Supertex/Microchip HV2707T-C/R8X based on functional analysis of the schematic, but has not been confirmed from the Altium BOM (binary format, not directly readable).
+
+| Parameter | Value (HV2707T-C/R8X, est.) | Notes |
+|-----------|------------------------------|-------|
+| Manufacturer | Supertex / Microchip | Acquired from Supertex 2014 |
+| Channel count | 8 | 8:1 multiplexer |
+| HV tolerance | Up to ±150V | Designed for medical ultrasound drive voltages |
+| ON resistance (RON) | ~100–200 Ω (typical HV mux) | Datasheet-dependent |
+| Switching speed | ~100 ns typical | SPI-triggered, fast HV switching |
+| Control interface | SPI (16-bit shift register) | 8MHz max SPI clock |
+| Supply voltage | Logic: 3.3–5V; HV: up to ±150V | Separate HV rail from logic |
+| Package | ~28–32 pin SOIC/SSOP | Depends on specific variant |
+
+*Note: All parameters marked (est.) are inferred from the HV2707 family datasheet and WULPUS schematic context, not directly confirmed.*
+
+**How WULPUS uses it:** The WULPUS HV mux is integrated on the HV PCB alongside the MOSFET pulser and +15V boost circuit. The MSP430FR5043 controls mux channel selection via SPI. During acquisition, the mux switches between TX and RX states — an important distinction: it does not just select between 8 transducers, it also switches the selected transducer's connection from the transmit driver (during the pulse) to the receive amplifier (during echo capture). This TX/RX switching function is a critical role beyond simple channel selection.
+
+**WULPUS mux timing:** The `HV MUX RX start time` parameter (tuned per transducer, as documented in Discussion #20) controls when the mux switches from TX to RX after the excitation pulse ends. This parameter must be tuned to avoid receiving the transmit pulse itself as a false echo while also not delaying so long that near-field echoes are missed.
+
+---
+
+### 7.3 Side-by-Side Comparison
+
+| Parameter | MAX14866 (pic0rick PMOD) | HV2707T/equiv. (WULPUS) |
+|-----------|--------------------------|--------------------------|
+| Channel count | 8 per IC | 8 per IC |
+| HV tolerance | ±80V | ±150V (est.) |
+| pic0rick TX voltage | ±24V | N/A |
+| WULPUS TX voltage | N/A | +15V |
+| TX/RX switching | External (MD0100 switch on main board) | Integrated in mux function |
+| SPI interface | 16-bit shift register | 16-bit shift register |
+| Max SPI clock | ≥10 MHz | 8 MHz (HV2707) |
+| Cascading | Via PMOD daisy-chain | Via SPI shift register chaining |
+| Board integration | PMOD (modular, pluggable) | On HV PCB (fixed, integrated) |
+| BOM position | Optional expansion | Core subsystem |
+| Approximate cost | $8–12 (IC only) | $5–10 (est.) |
+
+---
+
+### 7.4 Architecture Implications
+
+**pic0rick's modular PMOD approach:**
+
+The MAX14866's position as a pluggable PMOD means array capability is **opt-in** — the base pic0rick board is single-channel, and multi-channel is added when needed. This creates design flexibility: users who only need a single transducer avoid the mux cost and complexity. Users who want to experiment with arrays can add the PMOD without redesigning the main board.
+
+The ±80V tolerance provides margin beyond pic0rick's ±24V transmit pulses, protecting the MAX14866 from transients and allowing headroom for future higher-voltage pulser experiments. A PMOD-to-PMOD cascade enables 16, 24, or 32 channels from the same RP2040 SPI bus.
+
+**Constraint:** The MAX14866 does not include integrated TX/RX switching. pic0rick handles T/R isolation via the MD0100N8-G passive limiter on the main board. This architecture means all 8 mux inputs share the same transmit path — only one element fires at a time, but all inputs are exposed to the full transmit pulse during firing. The MD0100 limits the voltage that reaches the receive path, but does not isolate individual channels from each other during transmission.
+
+**WULPUS's integrated HV PCB approach:**
+
+WULPUS's mux is not modular — it is a fixed subsystem on the HV PCB. This means: (a) the mux cannot be replaced without redesigning the PCB, (b) the mux is specifically matched to the MOSFET pulser's voltage and timing requirements, (c) the TX/RX switching and channel selection are co-designed, which reduces the risk of timing mismatches.
+
+The higher HV tolerance (~±150V vs ±80V) is appropriate given that WULPUS's HV PCB can deliver +15V pulses — and WULPUS-Pro targets +30V. The extra HV headroom future-proofs the mux for higher-voltage drive without board redesign.
+
+**Constraint:** Fixed 8-channel count with no modular expansion path in the current design. Expanding to 32 channels requires a full PCB redesign (as discussed in the Vermon adapter analysis). The integrated approach trades flexibility for space efficiency and design coherence.
+
+---
+
+### 7.5 What Each Architecture Enables
+
+| Imaging mode | pic0rick + MAX14866 PMOD | WULPUS + integrated mux |
+|--------------|--------------------------|--------------------------|
+| Single-element A-mode | ✓ (base, no mux) | ✓ (any channel) |
+| 8-ch multiplexed A-mode | ✓ (with PMOD) | ✓ (standard config) |
+| 8-ch synthetic aperture | ✓ (with PMOD) | ✓ |
+| 16-ch SA (2 PMODs) | ✓ (SPI cascade) | ✗ (requires new PCB) |
+| 32-ch SA (4 PMODs) | ✓ (SPI cascade) | ✗ (Vermon adapter, new PCB) |
+| B-mode image | ✓ offline (host beamforming) | ✓ offline (host beamforming) |
+| Real-time B-mode | △ USB-limited throughput | ✗ BLE bandwidth cap |
+| HV replacement with >80V pulser | ✗ Exceeds MAX14866 rating | ✓ (HV2707 tolerates >80V) |
+| HV replacement with >150V pulser | N/A | ✗ Would exceed mux rating |
+
+---
+
+### 7.6 Design Decision Summary
+
+**pic0rick MAX14866 choice:** Appropriate for a modular open-hardware platform. The PMOD format makes channel expansion incremental, and ±80V tolerance comfortably exceeds the ±24V pulser. The main limitation is that T/R isolation is handled upstream (MD0100), not within the mux, meaning that per-channel isolation is not available — all channels share the transmit bus.
+
+**WULPUS integrated mux choice:** Appropriate for a fixed, integrated wearable. The co-design of pulser + mux + T/R switching on one PCB achieves the timing coordination needed for 450 nA standby power. The higher HV tolerance reflects a design intent toward future WULPUS-Pro voltages. The limitation is inflexibility — adding channels requires PCB modification.
+
+**For researchers considering channel expansion:** pic0rick's PMOD architecture is the more accessible path to >8 channels. Adding a second MAX14866 PMOD is a firmware change (extended SPI addressing) and a hardware addition, not a board redesign. For WULPUS, 32-channel expansion requires the Vermon adapter work documented in the discussions section.
+
+---
+
 ## Key References
 
 - pic0rick main repo: https://github.com/kelu124/pic0rick
