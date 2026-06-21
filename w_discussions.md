@@ -149,3 +149,125 @@ A file error in the repository; resolved.
 **Vermon array adapter demand signals research use case.** Issue #16 ("multiple requests") indicates that groups outside ETH Zurich are actively attempting to use WULPUS with Vermon linear arrays — which would extend the device from single-element A-mode into real 2D B-mode imaging. This use case is not yet documented or officially supported.
 
 **M-mode support question** (from Discussion #20) went unanswered. M-mode (time-series of a single scan line) is a standard clinical display mode that WULPUS's A-mode streaming architecture would support trivially in software — it is just a time plot of a fixed gate position. The absence of an answer suggests either the maintainer did not notice the question or M-mode is not yet implemented in the GUI.
+
+---
+
+## Deep Analysis: Issue #16 — Vermon 32-Channel Array Adapter
+
+### Background
+
+Issue #16 is an open enhancement request, filed after "multiple external requests" for an adapter PCB that would allow WULPUS to interface with Vermon 32-channel linear ultrasound arrays. The request comes from research groups outside ETH Zurich. No detailed technical discussion has been documented in the issue thread — the entry is brief — but its existence signals a meaningful aspiration: using WULPUS not merely as an A-mode point sensor but as a 2D B-mode imaging front-end.
+
+Vermon (a French manufacturer of ultrasound transducer arrays) produces compact linear arrays used in research ultrasound systems. Their arrays typically use proprietary flexible printed circuit (FPC) connectors and pitch-matched element arrangements that are not directly compatible with WULPUS's standard SMA or board-to-wire transducer connections.
+
+---
+
+### What 32-Channel Array Operation Would Mean
+
+#### From A-Mode to B-Mode
+
+WULPUS in its published form is an **A-mode** device: each channel fires one transducer, records the 1D echo return along the beam axis, and streams the time-domain trace. Visualized over time, this produces M-mode or Doppler-style traces — useful for carotid wall displacement, muscle thickness, or heart rate.
+
+A 32-element linear array enables **B-mode** imaging: a 2D cross-sectional image. This requires:
+
+1. **Sequential firing of individual elements** — transmit from element N, record echoes from all elements (or a subset), then fire element N+1.
+2. **Delay-and-sum beamforming** — coherently combine the received RF waveforms from multiple elements, applying time delays to focus the reconstruction at each image point.
+3. **Image reconstruction** — convert the beamformed RF data into a display image (typically log-compressed envelope).
+
+This transforms WULPUS from a wearable physiological sensor into a research imaging platform — an entirely different application class.
+
+#### Synthetic Aperture Acquisition
+
+The most common approach for a limited-channel front-end is **synthetic aperture (SA)** imaging:
+- Fire from one element at a time
+- Record the returning echo on all active receive channels simultaneously (or on the same element)
+- Repeat for each transmit element
+- Reconstruct the image from all transmit–receive combinations in post-processing
+
+For 32 elements with WULPUS's existing 8-channel mux:
+- 4 cascaded 8-channel mux stages would be required to address 32 elements
+- One full synthetic aperture frame = 32 transmit firings × 8-channel receive per firing
+- Frame rate at 50 Hz PRF: 50/32 ≈ **1.56 frames/second**
+- This is low by clinical standards (cardiac imaging requires 30+ fps) but useful for slow physiological processes (vessel walls, breathing) and static structural imaging
+
+---
+
+### Technical Barriers
+
+#### 1. BLE Bandwidth — The Primary Bottleneck
+
+WULPUS transmits data via BLE at **320 kbps effective throughput**.
+
+For a 32-channel synthetic aperture frame at 8 Msps:
+- Samples per channel per acquisition: 400 (current WULPUS default)
+- Data per full SA frame: 32 transmit × 8 receive channels × 400 samples × 2 bytes = **204,800 bytes = 1.64 Mb per frame**
+- At 320 kbps: time to transmit one frame = **5.1 seconds per frame**
+- Maximum wireless frame rate: ~**0.2 fps**
+
+This makes real-time B-mode via BLE essentially impossible at 8 Msps with full 32-channel SA. Options to reduce data volume:
+- Reduce to 200 samples per channel: halves data → 0.4 fps
+- Envelope-detect on-chip (MSP430) before transmission: reduces each 12-bit RF sample to ~4-bit envelope → ~2.5× compression → still ~0.5 fps
+- Reduce to a single-receive-channel per transmit (monostatic SA): 32 tx × 1 rx × 400 samples × 2 bytes = 25.6 KB/frame → at 320 kbps ≈ **0.78 fps** — marginal
+- Use USB rather than BLE: the nRF52840 USB dongle supports USB CDC; if data were routed to USB instead of BLE, throughput increases to ~1–5 Mbps, enabling borderline real-time rates
+
+**Bottom line on BLE:** BLE is the primary bottleneck. The WULPUS architecture must be modified — either to USB or to on-chip data reduction — for 32-channel array imaging to be practical.
+
+#### 2. HV Multiplexer Cascading
+
+WULPUS uses a single 8-channel HV mux. Extending to 32 channels requires either:
+
+**Option A — 4× cascaded 8-ch mux:** Wire four HV2707T-C/R8X (or equivalent) in cascade, each addressed via SPI shift register chaining. All four share a common SPI bus with extended 32-bit shift registers. This is electrically feasible — cascading SPI-controlled HV muxes is standard practice — but requires a new HV PCB redesign with 4 HV mux ICs, additional SPI routing, and careful HV isolation between stages.
+
+**Option B — Single 32-ch HV mux:** Supertex/Microchip offers HV mux variants with higher channel counts (HV20820, 20-ch; MAX4800 series). No single-die 32-ch version exists in this class. Two 16-channel parts in parallel would cover 32 channels.
+
+**Switching time constraint:** HV mux switch transitions must complete before the ADC sampling window opens. At 1–2 MHz transducer frequencies, the echo from 15 mm depth arrives ~20 µs after firing. A typical HV mux switches in <2 µs — adequate, but cascaded stages may introduce additional settling time that must be verified per datasheet.
+
+#### 3. Connector and PCB Redesign
+
+Vermon arrays use **proprietary 0.8 mm pitch FPC connectors** (34-pin, standard pitch for their 32-element research arrays). WULPUS's HV PCB uses SMA connectors for individual transducers — mechanically incompatible. An adapter PCB would need to:
+- Accept the Vermon FPC connector
+- Route each element signal to an HV mux input
+- Handle the impedance transformation (Vermon array elements are typically 50–75 Ω source impedance; the adapter must preserve this into the mux input)
+- Manage HV transients: each FPC trace must withstand the +15V transmit pulse without damaging the thin-film FPC
+
+This is a non-trivial PCB design problem. The flexibility of the FPC and the density of the connector require careful layout.
+
+#### 4. ADC Bandwidth and Axial Resolution
+
+Vermon research arrays are typically specified for **3–12 MHz** operation — outside WULPUS's usable ADC range. The MSP430FR5043 SDHS ADC ceiling (8 Msps) means the Nyquist limit is 4 MHz. Vermon arrays designed for ≥5 MHz will appear aliased and produce distorted RF data. Arrays specifically designed for 1–3 MHz (e.g., low-frequency vascular or liver imaging arrays) would be compatible, but these are less common in Vermon's research catalog.
+
+**Mitigation:** Some Vermon arrays operate in the 1–4 MHz range for specific applications (e.g., cardiac or transcranial). If the requesting research groups have such arrays, the frequency compatibility concern is manageable.
+
+#### 5. Beamforming Compute
+
+Delay-and-sum beamforming for 32 elements × 400 depth points requires approximately:
+- 32 × 400 × 2 multiply-accumulate operations per image line
+- For a 64-line image: ~1.6 million MACs per frame
+
+The MSP430FR5043 at 16 MHz cannot perform this in real time — its integer DSP throughput is orders of magnitude too low. All beamforming must be done **offline on the host PC**, which is standard practice for research scanners. The constraint is latency, not feasibility.
+
+---
+
+### Feasibility Assessment
+
+| Dimension | Feasibility | Notes |
+|-----------|-------------|-------|
+| HV mux cascading to 32 ch | ✓ Achievable | 4× SPI-cascaded HV mux ICs; requires new PCB |
+| Vermon FPC adapter PCB | ✓ Achievable | Non-trivial but straightforward PCB design |
+| Transducer frequency compatibility | △ Conditional | Only if Vermon array operates at 1–4 MHz; most do not |
+| BLE transmission of 32-ch data | ✗ Not real-time | 0.2–0.8 fps maximum via BLE at current data rates |
+| USB transmission (modified BLE path) | ✓ Near-real-time | 1–5 fps depending on data reduction |
+| On-chip beamforming | ✗ Not feasible | MSP430 compute too limited |
+| Host-PC beamforming | ✓ Fully feasible | Standard for research scanners |
+| Full SA synthetic aperture B-mode | ✓ Offline | Low frame rate but usable for research; not clinical |
+
+**Overall:** A Vermon 32-channel adapter for WULPUS is **technically achievable as a research tool** but requires three conditions to be met simultaneously: (1) use of a low-frequency Vermon array (≤3 MHz), (2) replacement of BLE with USB for data transfer, and (3) redesign of the HV PCB to cascade four mux stages. The resulting device would support offline B-mode reconstruction at ~1 fps — useful for structural imaging in research settings, but not for dynamic cardiac or vascular imaging. WULPUS-Pro (16 channels, +30V, programmable TGC) is a better base for this direction than the original WULPUS.
+
+### What This Signal Means for the Community
+
+The fact that "multiple requests" arrived before any public documentation of 32-channel support is significant. It indicates:
+1. Research groups are aware of WULPUS and see it as a potentially affordable entry point to array imaging (comparable systems like Verasonics Vantage or Ultrasonix cost $40,000–$150,000)
+2. The interest is specifically in synthetic aperture B-mode — the groups requesting this are not looking for physiological monitoring but for structural imaging
+3. There is an unmet need: an open-source, affordable, moderate-performance array front-end in the 1–4 MHz range that can produce B-mode images for research, without clinical regulatory requirements
+
+pic0rick's MAX14866 PMOD architecture offers a parallel path to this: 8 channels, compatible with higher-frequency transducers (up to ~32 MHz via the ADC10065), expandable to 32+ channels via cascaded PMOD boards. For groups interested in array B-mode at 2–10 MHz, pic0rick's architecture may be more suitable than WULPUS, despite lacking the power optimization.
