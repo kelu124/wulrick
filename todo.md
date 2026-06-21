@@ -8,72 +8,92 @@
 - [x] Write initial `plan.md` — 5-phase comparison research plan
 - [x] Write `todo.md` — this file
 - [x] Push `plan.md` and `todo.md` to repo
-- [x] Revise `plan.md` — add Phase 1 independent technical design analysis; reframe as strengths/weaknesses/specificities mapping; expand to 6 phases
+- [x] Revise `plan.md` v2 — add Phase 1 technical design analysis, reframe as strengths/weaknesses/specificities
+- [x] Revise `plan.md` v3 — restructure Phase 1 by functional block (pulser, mux, TGC, ADC, power, timing, connectivity); add methodology/output format notes; incorporate Luc's guidance (datasheet+schematic only, no hardware, prose+tables output)
 - [x] Push updated `plan.md` and `todo.md`
 
 ---
 
 ## To Do
 
-### Phase 1 — Independent Technical Design Analysis
+### Phase 1 — Technical Design Analysis by Functional Block
 
-- [ ] Read pic0rick main board schematic from kelu124/pic0rick
-- [ ] Read pic0rick pulser PMOD schematic
-- [ ] Read pic0rick HV supply board schematic
-- [ ] Reconstruct pic0rick full signal chain from schematics
-- [ ] Read WULPUS Acquisition PCB schematic (Altium files, pulp-bio/wulpus)
-- [ ] Read WULPUS High-Voltage PCB schematic
-- [ ] Reconstruct WULPUS full signal chain from schematics
-- [ ] Document and analyze key components: pic0rick (RP2040, AD8331, MCP4812, MD1210, TC6320, ADC)
-- [ ] Document and analyze key components: WULPUS (MSP430FR5043, nRF52832, HV mux, MOSFET driver, amp chain)
-- [ ] Assess PCB architecture: pic0rick (modularity, PMOD headers, layer count)
-- [ ] Assess PCB architecture: WULPUS (two-PCB split, miniaturization constraints, HV isolation)
-- [ ] Draw system block diagrams for each device
-- [ ] Summarize what each design explicitly optimizes for and explicitly trades away
+**Pulser (TX Excitation)**
+- [ ] Read MD1210 + TC6320 datasheets (pic0rick three-level bipolar pulser)
+- [ ] Identify WULPUS MOSFET driver part from schematic; read datasheet
+- [ ] Compare bipolar vs unipolar excitation: bandwidth, transducer efficiency, ringing
+- [ ] Assess ±24V vs +15V voltage levels: penetration depth implications
+
+**TX/RX Switch and Multiplexing**
+- [ ] Identify pic0rick RX protection components from schematic
+- [ ] Identify WULPUS HV multiplexer part; read datasheet
+- [ ] Identify WULPUS TX/RX switch part; read datasheet
+- [ ] Analyze 8-channel multiplexed approach vs single-channel
+
+**TGC / Amplifier**
+- [ ] Read AD8331 datasheet: noise figure, bandwidth, gain curve, input impedance
+- [ ] Identify WULPUS amplifier part from schematic; read datasheet
+- [ ] Analyze MCP4812 DAC role in pic0rick gain curve
+- [ ] Compare TGC (dynamic) vs fixed gain tradeoffs
+
+**ADC**
+- [ ] Identify pic0rick external ADC part from schematic; read datasheet (bandwidth, ENOB, interface)
+- [ ] Read MSP430FR5043 USS ADC specs: ENOB, integrated anti-aliasing
+- [ ] Calculate theoretical axial resolution for each (c/2fs for typical tissue)
+- [ ] Compare 10-bit @ 60 Msps vs 12-bit @ 8 Msps: dynamic range vs temporal resolution
+
+**Power Supply**
+- [ ] Identify pic0rick HV generation topology from HV board schematic
+- [ ] Identify WULPUS HV generation topology from HV PCB schematic
+- [ ] Analyze modular vs integrated HV supply: noise, flexibility, complexity
+- [ ] Estimate pic0rick power from RP2040, ADC, AD8331 datasheet figures
+
+**Digital Control and Timing**
+- [ ] Read RP2040 PIO documentation: timing resolution, limitations for ultrasound
+- [ ] Read MSP430FR5043 USS peripheral docs: what the dedicated sequencer automates
+- [ ] Compare PIO flexibility vs USS peripheral efficiency
+- [ ] Analyze WULPUS dual-MCU split: power gating and synchronization
+
+**Connectivity**
+- [ ] Determine actual USB throughput used by pic0rick (from firmware)
+- [ ] Determine WULPUS decimation/compression to fit 8 Msps into 320 kbps BLE
+- [ ] Compare data pipeline latency: USB vs BLE
 
 ### Phase 2 — Hardware Performance
 
-- [ ] Compare RP2040 PIO ultrasound timing vs MSP430FR5043 dedicated USS peripheral
-- [ ] Quantify axial resolution: 60 Msps vs 8 Msps for typical transducer frequencies
-- [ ] Analyze TGC (dynamic gain) benefit vs WULPUS fixed gain
-- [ ] Evaluate WULPUS 8-channel multiplexing capabilities
-- [ ] Compare bipolar vs unipolar transmit topology
-- [ ] Determine pic0rick USB power draw
-- [ ] Benchmark WULPUS BLE data throughput vs raw ADC rate
+- [ ] Compile key performance figures (single comparison table from datasheets + papers)
+- [ ] Flag uncharacterized specs
+- [ ] Collect SNR, dynamic range, imaging depth, resolution from published papers
 
 ### Phase 3 — Software and Firmware
 
-- [ ] Clone and run pic0rick MicroPython examples
-- [ ] Clone and build WULPUS C firmware (MSP430 + nRF52832 + dongle)
-- [ ] Evaluate pyUn0-lib API coverage and documentation
-- [ ] Evaluate WULPUS Python host tools and GUI
-- [ ] Trace and benchmark full data pipelines (USB vs BLE)
-- [ ] Check kelu124/us_rf_processing for B-mode reconstruction demos
-- [ ] Survey signal processing tooling gaps in both ecosystems
+- [ ] Survey pyUn0-lib API and documentation
+- [ ] Survey WULPUS firmware repo structure and acquisition configuration
+- [ ] Compare MicroPython vs C toolchain for customization ease
+- [ ] Evaluate WULPUS Python GUI scope
+- [ ] Trace and document full data pipelines for both devices
 
-### Phase 4 — Strengths, Weaknesses, and Specificities
+### Phase 4 — Strengths, Weaknesses, Specificities
 
-- [ ] Document pic0rick strengths (high Msps, TGC, PMOD modularity, Python ecosystem, OSHWA cert)
-- [ ] Document pic0rick weaknesses (USB-only, single channel, no power characterization, not medical-grade)
-- [ ] Document pic0rick specificities (PIO-based timing, three-level bipolar pulser)
-- [ ] Document WULPUS strengths (<25 mW, 8 channels, BLE, 13g form factor, published results)
-- [ ] Document WULPUS weaknesses (8 Msps limit, fixed gain, BLE bandwidth, C toolchain, Altium lock-in)
-- [ ] Document WULPUS specificities (MSP430 USS peripheral, dual-MCU power gating)
-- [ ] Collect quantitative benchmarks from published papers for both devices
+- [ ] Verify and quantify pic0rick weaknesses (USB-only, single channel, power unknown)
+- [ ] Investigate pic0rick specificities (PIO timing ceiling, three-level pulser implications)
+- [ ] Verify and quantify WULPUS weaknesses (8 Msps limit, fixed gain, BLE ceiling)
+- [ ] Investigate WULPUS specificities (MSP430 USS constraints, dual-MCU overhead)
+- [ ] Extract quantitative benchmarks from Zenodo paper (pic0rick) and IEEE UFFC 2022 (WULPUS)
 
 ### Phase 5 — Openness, Community, Cost
 
-- [ ] Verify pic0rick PCB tool (KiCad vs other)
-- [ ] Identify Altium export formats in WULPUS repo
-- [ ] Confirm pic0rick BOM cost from Tindie / repo
-- [ ] Estimate WULPUS BOM cost from files and PCBWay
-- [ ] GitHub activity audit: stars, forks, issues, last commit
-- [ ] Find community channels for each project
+- [ ] Verify pic0rick PCB tool; check Gerber exports
+- [ ] Check WULPUS Altium export formats available
+- [ ] Confirm pic0rick BOM cost (Tindie + component BOM)
+- [ ] Estimate WULPUS BOM cost
+- [ ] GitHub activity audit for both repos
+- [ ] Find community channels
 
 ### Phase 6 — Synthesis
 
-- [ ] Master comparison table (all dimensions)
-- [ ] Strengths/weaknesses/specificities summary card per device
-- [ ] Key design decisions that most differentiate the platforms
-- [ ] Gap analysis: what neither covers
+- [ ] Master comparison table (all functional blocks + performance + ecosystem)
+- [ ] Per-device strengths/weaknesses/specificities summary
+- [ ] Key differentiating design decisions
+- [ ] Gap analysis
 - [ ] Cross-pollination notes
