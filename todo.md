@@ -50,9 +50,29 @@
   - Gap analysis: 11 identified gaps (SNR, ENOB, PRF, resolution, imaging depth, HV mux part, etc.)
   - Cross-pollination notes: what each project could adopt from the other
   - Decision guide table: 16 use-case rows with recommended device
+- [x] `w_discussions.md` — WULPUS GitHub Discussions scraped and summarized (3 discussions, 15 issues in 4 themes)
+- [x] `w_uses.md` — 7 WULPUS papers documented with full citations, DOIs, descriptions, and summary table
+- [x] `picorecommendation.md` — pic0rick strengths, WULPUS-inspired hardware recs, and 7 software recs (SW-1 through SW-7)
+- [x] `w_discussions.md` expanded: deep analysis of Vermon 32-ch array adapter (issue #16) — BLE bottleneck quantified (1.28 Mbps required vs 320 kbps available), SA frame rate analysis (1.56 fps), mux cascading requirements, feasibility table
+- [x] `MSP430FR5043.md` — 12-section deep dive on USS_A PPG/ADC/PGA, FRAM, DMA, power modes (450 nA LPM4), constraints vs general-purpose approach
+- [x] `plan.md` Phase 7 added: Array Multiplexers — MAX14866 (pic0rick PMOD) vs WULPUS HV mux, specs, architecture implications, enabling/limiting table
+- [x] `array_sourcing.md` — sourcing guide for compatible transducers and arrays (Olympus V-series, Vermon, Imasonic, generic NDT, medical surplus, PVDF)
+- [x] `TUSS4470.md` — 8-section deep dive on TI TUSS4470 AFE: H-bridge pulser (40kHz–1MHz), log-amp (94 dB range), envelope-only output, $1.63, 57.5 mW active
+- [x] `TUSvsMSP.md` — TUSS4470 vs MSP430FR5043 comparative analysis: integration level, frequency range, raw RF vs envelope, gain architecture, power, ecosystem, cost
 
 ---
 
 ## To Do
 
-*All phases complete.*
+*All planned phases complete. The following gaps were identified during the review pass:*
+
+### Open gaps — documented but not yet addressed
+
+- [ ] **WULPUS HV mux chip identity unconfirmed** — provisionally identified as HV2707T-C/R8X from schematic analysis; Altium binary BOM not readable. Confirm from maintainers or via direct Altium export.
+- [ ] **MSP430FR5043 SDHS ENOB unpublished** — TI does not publish ENOB for the USS_A SDHS ADC. Critical for dynamic range assessment. Would require bench measurement or TI direct inquiry.
+- [ ] **pic0rick system SNR uncharacterized** — no published measurements of end-to-end system SNR, imaging depth, or axial resolution with any specific transducer. A phantom measurement would fill this gap.
+- [ ] **WULPUS-Pro technical specification** — referenced in papers and README as the next-generation platform (16 ch, +30V, TGC, CMUT bias, extended frequency range). No public repository or datasheet as of 2026-06-21.
+- [ ] **Vermon 32-ch adapter PCB** — analysis in `w_discussions.md` documents feasibility; adapter does not yet exist. Follow issue #16 for status.
+- [ ] **Transducer sourcing prices** — prices in `array_sourcing.md` are approximate estimates; commercial pricing for Vermon and Imasonic requires direct quotation.
+- [ ] **M-mode GUI for WULPUS** — open question from Discussion #20 never answered; whether the GUI supports M-mode display is undocumented.
+- [ ] **Board-to-board calibration procedure** — multiple WULPUS builders noted per-unit signal variability; no calibration procedure exists in documentation.
