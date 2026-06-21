@@ -88,3 +88,39 @@ Analog Devices product page for the AD8331 ultralow noise VGA (Variable Gain Amp
 
 ### https://www.ti.com/product/MSP430FR5043
 Texas Instruments product page for the MSP430FR5043, the dedicated ultrasound microcontroller used in WULPUS. Key features: integrated USS_A (Ultrasonic Sensing Solution) peripheral with 12-bit SDHS ADC at up to 8 Msps, programmable pulse generator (PPG), integrated PHY with 4 Ω output driver, 16 MHz clock, 64 KB FRAM, 450 nA standby. The USS peripheral automates pulse generation and acquisition sequencing, eliminating the need for external ultrasound timing circuits. Used for digital control and timing block analysis in Phase 1.
+
+---
+
+## Component Datasheets — Phase 1 (continued)
+
+### https://ww1.microchip.com/downloads/en/DeviceDoc/20005713B.pdf
+Microchip/Supertex MD1213 high-speed dual MOSFET driver datasheet. The MD1213K6-G is the gate driver used in the pic0rick pulser board to drive the TC6320 power MOSFETs. Key specs: 2A peak source/sink current, 6 ns rise/fall times with 1000 pF load, 4.5–13V supply, 12-lead QFN. Designed specifically for medical ultrasound pulser circuits.
+
+### https://ww1.microchip.com/downloads/en/DeviceDoc/20005697A.pdf
+Microchip/Supertex TC6320 dual N/P-channel MOSFET datasheet. The TC6320TG-G is the power switch used in the pic0rick three-level pulser. Key specs: 200V breakdown (N and P channel), 7Ω / 8Ω Ron, integrated gate-Zener clamps and gate-source resistors. Forms the high-voltage switch pair driven by the MD1213 to generate ±24V bipolar pulses.
+
+### https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/MD0100-Single-and-Dual-ChannelHigh-Voltage-Protection-TR-Switch-Data-Sheet-20005738A.pdf
+Microchip/Supertex MD0100 protection T/R switch datasheet. The MD0100N8-G is used on the pic0rick main ADC board to protect the AD8331 amplifier from HV transmit pulses. Key specs: ±100V input tolerance, ±1V trip voltage, 15Ω Ron, 21pF, no power supply required. A passive self-protecting switch.
+
+### https://recom-power.com/pdf/Econoline/R2S_R2D.pdf
+RECOM R2D series isolated DC-DC converter datasheet. The R2D-0524_P is used in the pic0rick pulser board to generate ±24V from the USB 5V input. Key specs: 5V in, ±24V out, 2W total, 1kV isolation, ~85% efficiency, 42mA per output rail. Provides galvanic isolation between USB ground and the HV pulser circuit.
+
+### https://www.nordicsemi.com/Products/nRF52832
+Nordic Semiconductor nRF52832 product page. The nRF52832 is the BLE SoC used in WULPUS for wireless data transmission. Key specs: 64 MHz Cortex-M4 with FPU, 512KB Flash, 64KB RAM, BLE 5.x with 2M PHY support, +4 dBm TX power, −96 dBm RX sensitivity, 4.6–5.0 mA active current. In WULPUS, it receives ultrasound frames from the MSP430 via SPI and transmits them wirelessly at 320 kbps.
+
+---
+
+## WULPUS Firmware Source Files
+
+### https://raw.githubusercontent.com/pulp-bio/wulpus/main/fw/msp430/wulpus_msp430_firmware/wulpus/us_hv_mux.h
+### https://raw.githubusercontent.com/pulp-bio/wulpus/main/fw/msp430/wulpus_msp430_firmware/wulpus/us_hv_mux.c
+WULPUS MSP430 firmware source for HV multiplexer control. Reveals the mux is controlled via SPI (8 MHz, MSB first) with a separate latch-enable (LE) pin. Separate functions for TX channel config (hvMuxConfTx) and RX channel config (hvMuxConfRx) write 16-bit shift registers. The LE pin transition latches the configuration into the switch outputs. Used to understand the mux architecture in Phase 1.
+
+### https://raw.githubusercontent.com/pulp-bio/wulpus/main/fw/msp430/wulpus_msp430_firmware/wulpus/wulpus_sys.h
+WULPUS MSP430 system header. Reveals: power-gated op-amp (enableOpAmpSupply / enableOpAmp functions), BLE-ready handshake GPIO, memory access macros, IIS2DH IMU presence, and protocol framing (0xFA config packet start byte). Used to understand the acquisition board architecture.
+
+### https://raw.githubusercontent.com/pulp-bio/wulpus/main/fw/nrf52/ble_peripheral/US_probe_nRF52_firmware/us_defines.h
+WULPUS nRF52 defines header. Reveals the BLE frame format: 4 SPI transfers × 201 bytes = 804 bytes per ultrasound frame. Maximum buffer: 35 frames. Device name: WULPUS_PROBE_0. Used to calculate actual BLE data throughput in Phase 1.
+
+### https://api.semanticscholar.org/graph/v1/paper/2d6af79dbc506a32b75f0f103162a15714da79c7
+Semantic Scholar entry for the WULPUS IEEE EMBC 2022 paper. Provides the abstract and confirms published specifications: <25 mW, 46×25 mm, 13g, BLE, 8-channel. Used as a secondary reference to cross-check specifications.
