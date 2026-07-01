@@ -40,6 +40,36 @@ This maps directly onto the functional block structure used in `phase1.md` of th
 
 ---
 
+## rheonics_ceeus2026.pdf
+
+**Source:** https://rheonics.com/wp-content/uploads/2026/06/ceeus-2026-presentation.pdf
+**Title:** Open-Source Wearable Ultrasound Platforms: A Rocky Path from Lab Prototype to Public Knowledge
+**Author:** Sergei Vostrikov (Rheonics GmbH; formerly ETH Zurich IIS/PULP group — lead engineer on WULPUS and TinyProbe)
+**Venue:** IEEE CEEUS Workshop, Warsaw, 2026
+**Format:** Presentation slides
+
+### Relevance to the pic0rick vs WULPUS comparison
+
+This is Vostrikov's post-ETH retrospective on the open-source wearable ultrasound ecosystem, delivered from an industry vantage point (Rheonics). It directly addresses the openness, reproducibility, and sustainability of WULPUS and similar platforms, and names pic0rick explicitly in the comparative landscape.
+
+**Confirmed hardware components (resolves todo.md Gap #1).** The slides document WULPUS's full front-end component list. Previously unconfirmed or approximate entries in WULPUS.md are now confirmed:
+- HV mux: **HV2707** (was "~HV2707T provisional")
+- T/R switch: **MD0101** (new — not previously documented)
+- MOSFET driver: **MCP1416** (new — not previously documented)
+- Amplifier: **OPA836** (was "external op-amp, fixed +10 dB")
+
+**WULPUS community impact.** Vostrikov reports 100+ probes manufactured worldwide, 12+ academic and industrial partner groups, and 5+ derivative systems — quantifying the impact that the WULPUS papers do not directly state.
+
+**WULPUS lifecycle.** May 2021 (idea) → Oct 2022 (IUS paper) → April 2023 (v1.0.0 GitHub) → April 2024 (full release) → Feb 2026 (open PCBA). The 18-month lag between IUS paper and first public release, and the further 12-month lag to fully open PCB sources, illustrates the "rocky path" of the title.
+
+**Three-tier openness model.** The paper defines openness as a progression: *Public repo* (code/files available) → *Reproducible* (someone else can build it) → *Sustainable* (community can maintain without original authors). Most systems reach tier 1; few reach tier 3. pic0rick is explicitly rated "Open from inception, High reproducibility, Strong docs" — a better score than WULPUS, which is noted as "Vendor-dependent" due to Altium PCB tooling. This validates the phase5.md analysis of PCB tooling as a reproducibility barrier.
+
+**Open-source landscape map.** The slides compare WULPUS, TinyProbe, USoP, pic0rick, open-UST, and SimpleRick on openness dimensions. pic0rick is listed alongside WULPUS as a peer platform, not a lesser tool — consistent with the framing in this repository.
+
+**Lessons learned.** Vostrikov identifies three barriers to sustainable open-source hardware: (1) Altium dependency creates a modification barrier (→ switch to KiCad), (2) three C toolchains (TI CCS + Segger + Nordic SDK) create a firmware barrier, (3) transducer incompatibility limits user customization. All three align with constraints identified in `phase5.md` and `todo.md`.
+
+---
+
 ## PuLsE_Giordano2025_arXiv.pdf
 
 **Source:** https://arxiv.org/abs/2410.16219
