@@ -24,8 +24,10 @@ WULPUS is an open-source wearable ultrasound probe for continuous multi-day phys
 | BLE radio | nRF52832 | BLE 5.0, 320 kbps effective throughput |
 | USB dongle | nRF52840 | Receives BLE on host side; USB CDC to PC |
 | HV supply | Boost converter | +15V for MOSFET pulser |
-| HV mux | ~HV2707T (provisional) | 8-channel time-multiplexed TX/RX switch |
-| External op-amp | Fixed +10 dB | Power-gated between acquisitions |
+| HV mux | HV2707 | 8-channel time-multiplexed TX/RX switch |
+| T/R switch | MD0101 | Single-channel T/R protection switch |
+| MOSFET driver | MCP1416 | Gate driver for unipolar pulser MOSFET |
+| Amplifier | OPA836 | Fixed-gain op-amp; power-gated between acquisitions |
 
 ---
 
@@ -68,6 +70,22 @@ WULPUS is an open-source wearable ultrasound probe for continuous multi-day phys
 | Hand gesture recognition | Vostrikov et al. 2023 IUS | 97% accuracy, 16 mW |
 | Wrist/hand kinematics | Spacone et al. TBioCAS 2025 | RMSE 7.32°, 5 subjects |
 | Wrist heart rate (PuLsE-WULPUS) | Vostrikov et al. arXiv 2024 | r=0.99 vs ECG |
+
+---
+
+## Community Impact
+
+*(from Vostrikov, IEEE CEEUS Warsaw 2026 — see `pdf/rheonics_ceeus2026.pdf`)*
+
+| Metric | Value |
+|--------|-------|
+| Probes manufactured worldwide | 100+ |
+| Academic/industrial partner groups | 12+ |
+| Derivative systems published | 5+ |
+| Timeline: idea → IUS paper | May 2021 → Oct 2022 |
+| Timeline: IUS paper → v1.0.0 GitHub | Oct 2022 → April 2023 |
+| Timeline: v1.0.0 → full release | April 2023 → April 2024 |
+| Timeline: full release → open PCBA | April 2024 → Feb 2026 |
 
 ---
 
