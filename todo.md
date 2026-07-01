@@ -68,7 +68,7 @@
 
 ### Open gaps — documented but not yet addressed
 
-- [ ] **WULPUS HV mux chip identity unconfirmed** — provisionally identified as HV2707T-C/R8X from schematic analysis; Altium binary BOM not readable. Confirm from maintainers or via direct Altium export.
+- [x] **WULPUS HV mux chip identity confirmed** — HV2707 (confirmed by Vostrikov, IEEE CEEUS Warsaw 2026, `pdf/rheonics_ceeus2026.pdf`). Also confirmed: T/R switch = MD0101, MOSFET driver = MCP1416, amplifier = OPA836. All four parts now in `OtherSystems/WULPUS.md`.
 - [ ] **MSP430FR5043 SDHS ENOB unpublished** — TI does not publish ENOB for the USS_A SDHS ADC. Critical for dynamic range assessment. Would require bench measurement or TI direct inquiry.
 - [ ] **pic0rick system SNR uncharacterized** — no published measurements of end-to-end system SNR, imaging depth, or axial resolution with any specific transducer. A phantom measurement would fill this gap.
 - [ ] **WULPUS-Pro technical specification** — referenced in papers and README as the next-generation platform (16 ch, +30V, TGC, CMUT bias, extended frequency range). No public repository or datasheet as of 2026-06-21.
