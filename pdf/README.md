@@ -40,6 +40,18 @@ This maps directly onto the functional block structure used in `phase1.md` of th
 
 ---
 
+## Weik2026_WearableUltrasoundReview.pdf
+
+**Source:** https://ieeexplore.ieee.org/document/11418920 (CC BY)
+**Title:** Current Trends in Ultrasound Wearables: Spotlight on System Architecture
+**Authors:** David Weik, Richard Nauber, Erik Kaiser, Nele Kirsch, Robert Kunz, Lennart Schierling, Christoph Leitner, Luca Benini, Hsiao-Chuan Liu, Qifa Zhou, Jochen Hampe, Gerhard Fettweis, Moritz Herzog, Christian Kupsch
+**Venue:** IEEE Reviews in Biomedical Engineering, 2026
+**DOI:** 10.1109/RBME.2026.3664011
+
+A 21-page survey of wearable ultrasound systems and applications (2018–mid-2025), co-authored by Leitner and Benini (ETH Zurich, WULPUS/TinyProbe group). Cites WULPUS, PuLsE, TinyProbe, USoP, ModulUS. pic0rick is not cited. See `OtherSystems/Weik2026Review.md` for full analysis.
+
+---
+
 ## rheonics_ceeus2026.pdf
 
 **Source:** https://rheonics.com/wp-content/uploads/2026/06/ceeus-2026-presentation.pdf
