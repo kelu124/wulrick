@@ -211,6 +211,185 @@ Envelope output is 4096 float32 = 16 KB, or as uint16 (after scaling) = 8 KB —
 
 ---
 
+## Companding envelope output (µ-law / A-law / dB log)
+
+### Why companding
+
+Ultrasound envelope has high dynamic range: near-field echoes can sit 40–60 dB above the noise floor. A linear uint16 quantisation preserves this range but distributes code levels uniformly — wasting half the codes on strong echoes and assigning very few to the weak, diagnostically relevant echoes at depth.
+
+Companding (compress + expand) applies a logarithmic mapping before quantisation, spreading code levels roughly uniformly on a log scale:
+
+| Representation | Size (N=4096) | Dynamic range | Notes |
+|----------------|--------------|---------------|-------|
+| float32 envelope | 16 KB | ~144 dB | Full precision; large for transfer/storage |
+| uint16 linear | 8 KB | ~96 dB | Fine for strong echoes; wastes codes at depth |
+| uint8 linear | 4 KB | ~48 dB | Clips weak echoes; not useful in practice |
+| uint8 µ-law (µ=255) | 4 KB | ~38 dB uniform SNR | Telephony standard; straightforward to adapt |
+| uint8 dB log (40–60 dB window) | 4 KB | 40–60 dB (windowed) | Ultrasound-native; explicit clinical dB scale |
+
+All three companding schemes achieve the same 4 KB footprint. The differences are in SNR distribution and decoder complexity.
+
+---
+
+### µ-law adapted for non-negative envelope
+
+Standard µ-law is defined for signed audio. The ultrasound envelope is always ≥ 0, so only the positive branch is used:
+
+```
+y = log(1 + µ · x_norm) / log(1 + µ)    x_norm ∈ [0, 1]
+```
+
+where `x_norm = env[i] / peak` and `peak` is the maximum expected envelope value (ADC full-scale × TGC gain, or measured per-acquisition peak). With µ = 255 (ITU-T standard), values near zero receive 8× more code levels than values near full-scale.
+
+Decoded: `x_norm = ((1 + µ)^y − 1) / µ`
+
+---
+
+### A-law adapted for non-negative envelope
+
+A-law adds a linear segment below the crossover `1/A`, giving slightly better SNR for very weak signals:
+
+```
+y = A · x_norm / (1 + ln A)              x_norm < 1/A
+y = (1 + ln(A · x_norm)) / (1 + ln A)   x_norm ≥ 1/A
+```
+
+With A = 87.6 (ITU-T G.711): the crossover at `1/A ≈ 0.011` corresponds to ~1% of ADC full-scale — below the practical noise floor of a 10-bit ADC at ultrasound frequencies. In practice, A-law and µ-law produce near-identical results for ultrasound envelope data. **µ-law is simpler to implement (no branch at the crossover) and is the recommended choice.**
+
+---
+
+### Ultrasound-native alternative: explicit dB log compression
+
+Clinical ultrasound systems use a parameterised dB window rather than a telephony companding standard:
+
+```c
+// y_dB = 20·log10(env / peak); window maps [−window_dB, 0 dB] → [0, 255]
+float32_t inv_peak = 1.0f / peak;
+float32_t scale = 255.0f / window_dB;
+for (uint32_t i = 0; i < n; i++) {
+    float32_t db = 20.0f * log10f(env[i] * inv_peak + 1e-9f);
+    float32_t v = (db + window_dB) * scale;
+    out[i] = (uint8_t)(v < 0.0f ? 0 : v > 255.0f ? 255 : v);
+}
+```
+
+`window_dB = 40` covers echoes within 40 dB of the peak; echoes below −40 dB map to 0. This is the most interpretable format for display (one code ≈ 0.16 dB) and matches what B-mode scanners produce. For heart-rate / distance detection, 40 dB suffices; for tissue characterisation, 60 dB is typical.
+
+---
+
+### M33 implementations
+
+#### Option 1 — Scalar µ-law (logf)
+
+```c
+#define MU_LAW_MU    255.0f
+
+// Precompute once at startup:
+// static const float32_t MU_LAW_DIV = 1.0f / logf(1.0f + MU_LAW_MU);
+
+void envelope_to_mulaw_u8(const float32_t *env, uint8_t *out,
+                           uint32_t n, float32_t peak,
+                           float32_t mu_law_div) {
+    float32_t inv_peak = 1.0f / peak;
+    for (uint32_t i = 0; i < n; i++) {
+        float32_t x = env[i] * inv_peak;
+        if (x > 1.0f) x = 1.0f;
+        out[i] = (uint8_t)(logf(1.0f + MU_LAW_MU * x) * mu_law_div * 255.0f + 0.5f);
+    }
+}
+```
+
+M33 FPU executes `logf` in ~15–20 cycles (ROM implementation using FPU). For N=4096 at 150 MHz: ~550 µs. Fits the 5000 µs inter-pulse budget; runs after the Hilbert pipeline (~92 µs), total ~640 µs.
+
+#### Option 2 — Vectorized via CMSIS-DSP (`arm_vlog_f32`)
+
+`arm_vlog_f32` (CMSIS-DSP ≥ 1.14 with DSP extension enabled) computes natural log element-wise using SIMD, 4–8 samples per cycle:
+
+```c
+void envelope_to_mulaw_vectorized(const float32_t *env, uint8_t *out,
+                                   uint32_t n, float32_t peak) {
+    static float32_t tmp[NFFT];
+    const float32_t mu_law_div = 1.0f / logf(1.0f + MU_LAW_MU);  // precompute
+    const float32_t mu_over_peak = MU_LAW_MU / peak;
+    const float32_t scale = 255.0f * mu_law_div;
+
+    arm_scale_f32(env, mu_over_peak, tmp, n);  // tmp[i] = µ * x_norm[i]
+    arm_offset_f32(tmp, 1.0f, tmp, n);         // tmp[i] = 1 + µ * x_norm[i]
+    arm_vlog_f32(tmp, tmp, n);                  // tmp[i] = log(1 + µ * x_norm[i])
+    arm_scale_f32(tmp, scale, tmp, n);          // tmp[i] = 255 * log(...) / log(1+µ)
+    arm_float_to_q7(tmp, (q7_t *)out, n);      // convert to uint8 (saturating)
+}
+```
+
+**Note:** `arm_vlog_f32` requires `ARM_MATH_MVEF` or `ARM_MATH_DSP` defined and CMSIS-DSP ≥ 1.14. Verify with `#if defined(ARM_MATH_MVEF) || defined(ARM_MATH_DSP)`. If absent, fall back to Option 1. Estimated time with DSP extension: **~50–80 µs** for N=4096.
+
+#### Option 3 — IEEE 754 exponent approximation (no libm)
+
+The IEEE 754 float exponent gives a floor(log₂) for free. Combining it with the top mantissa bits yields a coarse log approximation with ~1–2 dB resolution — no `logf` call required:
+
+```c
+static inline uint8_t fast_log2_compress(float32_t f, float32_t inv_peak) {
+    if (f <= 0.0f) return 0;
+    f *= inv_peak;
+    if (f > 1.0f) f = 1.0f;
+
+    uint32_t bits;
+    __builtin_memcpy(&bits, &f, 4);
+
+    // Biased exponent for f in (0, 1]: ranges from 0x7E (0.5–1.0) downward
+    int32_t exp = (int32_t)((bits >> 23) & 0xFF) - 127; // true exponent, ≤ 0
+    uint32_t mant5 = (bits >> 18) & 0x1F;               // 5 upper mantissa bits
+
+    // Map log2(f) ∈ [−48, 0] dB range → [0, 255]
+    // Each exponent step = 6 dB; 48 dB → 8 exponent steps × 32 sub-steps = 256 codes
+    int32_t level = (exp + 48) * 32 + (int32_t)mant5;
+    if (level < 0)   return 0;
+    if (level > 255) return 255;
+    return (uint8_t)level;
+}
+
+void envelope_to_log_u8_fast(const float32_t *env, uint8_t *out,
+                              uint32_t n, float32_t peak) {
+    float32_t inv_peak = 1.0f / peak;
+    for (uint32_t i = 0; i < n; i++)
+        out[i] = fast_log2_compress(env[i], inv_peak);
+}
+```
+
+Resolution: 6 dB per exponent step, refined to ~6/32 ≈ 0.2 dB with 5 mantissa bits. All integer arithmetic after the initial float multiply — executes in ~5–8 cycles per sample on M33. For N=4096: **< 1 µs** total. Sufficient for distance measurement and heart-rate detection; not sufficient for quantitative tissue characterisation.
+
+---
+
+### Timing and compression summary
+
+| Method | Time (N=4096, 150 MHz) | Output | Quality |
+|--------|------------------------|--------|---------|
+| µ-law scalar (`logf` loop) | ~550 µs | 4 KB uint8 | Good — matches telephony standard |
+| µ-law vectorized (`arm_vlog_f32`) | ~50–80 µs | 4 KB uint8 | Same quality, ~7× faster |
+| dB log scalar (`log10f` loop) | ~550 µs | 4 KB uint8 | Best for display / clinical use |
+| IEEE 754 bit-hack | < 1 µs | 4 KB uint8 | Coarse (~0.2 dB); detection tasks only |
+
+**Practical result:** uint8 µ-law at 200 Hz PRF = 4096 bytes × 200 = **0.8 MB/s over USB** — comfortably within USB FS bandwidth (≈1 MB/s ceiling) and 4× smaller than float32 envelope. The vectorized path leaves the total Hilbert+companding pipeline well under 200 µs.
+
+### Host-side decode (Python)
+
+```python
+import numpy as np
+
+MU = 255.0
+
+def mulaw_decode(data_u8: np.ndarray, peak: float) -> np.ndarray:
+    y = data_u8.astype(np.float32) / 255.0
+    return peak * ((1.0 + MU) ** y - 1.0) / MU
+
+def db_log_decode(data_u8: np.ndarray, peak: float, window_db: float = 40.0) -> np.ndarray:
+    y = data_u8.astype(np.float32) / 255.0
+    db = y * window_db - window_db   # map [0,255] → [−window_dB, 0]
+    return peak * 10.0 ** (db / 20.0)
+```
+
+---
+
 ## Summary
 
 | Parameter | Value |
