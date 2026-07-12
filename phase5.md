@@ -101,3 +101,99 @@ Yes. KiCad source files, JLCPCB-ready BOMs, and Gerbers are all in the repo. Com
 
 **Can you build a WULPUS from scratch?**
 Yes, with more effort. PDF schematics and Gerbers are available for fabrication. BOMs are provided (PDF/XLSX). The Altium source files are present but only useful if you have Altium. Component sourcing: MSP430FR5043 and nRF52832 are standard commercial ICs. The main challenge is the 3 separate firmware toolchains and programmers needed (MSP430 JTAG + nRF52 SWD for both the probe and dongle). WULPUS includes programming PCBs in the repo for this reason. Estimated lead time: 3–6 weeks, more complex setup than pic0rick.
+
+---
+
+## 5.5 Transducer Connectivity
+
+*Source: hardware pick-place files and BOMs for pic0rick (kelu124/pic0rick) and WULPUS (pulp-bio/wulpus); OtherSystems files for remaining entries. Verified July 2026.*
+
+### Connector types across surveyed systems
+
+| System | Connection type | Part / standard | Notes |
+|--------|----------------|-----------------|-------|
+| **pic0rick** | Coaxial — SMA | JOHNSON 142-0701-801 (Amphenol 132357-11), edge-launch PCB | Single transducer port on ADC board. Mux board (MAX14866 PMOD) adds a 2×8 2.54 mm pin header for 8-element array connections |
+| **WULPUS** | Flat flex cable (FFC) | Hirose DF52-16S-0.8H(21), 16-pin, 0.8 mm pitch | Confirmed from HV PCB pick-place file. 16 pins = 8 elements × (signal + GND). Board-to-board (HV ↔ Acquisition PCB): Samtec LSHM-120 40-pin, 0.5 mm |
+| **TinyProbe** | FFC (wifi board); main array not released | Hirose DF52-2S-0.8H(21) on wifi_6_board (2-pin); main FPGA board hardware not in public repo | DF52-2S likely serves a single-element cal or sync channel. The 32-ch array connects the main board via a TE 2199230-5 card edge (67-pos, 0.5 mm) |
+| **USoP** | No connector — embedded interconnect | Serpentine Cu/PI traces encapsulated in silicone | Cable-free by design. PZT elements, control IC, and battery all co-embedded in one flexible patch |
+| **PuLsE** | Unknown | — | No published hardware. Wrist-worn single-element; likely direct bond or spring contact to PCB pad |
+| **EchoLite** | Unknown | — | Paper not indexed as of 2026-06-30; no hardware files available |
+| **ModulUS** | Unknown | — | Mentioned in Anatomy slides only; no public hardware files. Modular research platform likely uses SMA or custom coax per its multi-board architecture |
+
+### U.FL / IPEX / MHF — absence confirmed
+
+No U.FL (also marketed as IPEX MHF) connector appears in any of the hardware files for pic0rick, WULPUS, or TinyProbe. This is unsurprising:
+
+- U.FL is rated to ~500 mating cycles and 0.5 W maximum power — marginal for repeated transducer swaps at ±24V pulse levels
+- U.FL's 1.13 mm cable diameter is sub-optimal for maintaining 50Ω impedance at ultrasound frequencies (3–30 MHz)
+- The wearable systems (WULPUS, PuLsE) optimise for flatness and flexibility rather than the coaxial architecture U.FL serves
+
+### Connector choice as design philosophy
+
+The connector type is a direct signal of the intended use context:
+
+| Connector family | Use context | Systems |
+|-----------------|-------------|---------|
+| SMA | Lab instrument, interchangeable probes, 50Ω matched | pic0rick, ModulUS (likely) |
+| Hirose DF52 FFC | Wearable: thin, light, short run, no impedance matching needed | WULPUS, TinyProbe |
+| Embedded serpentine flex | Fully integrated patch: no connector at all | USoP |
+| 2.54 mm pin header | Low-cost multi-element array connection (research/prototype) | pic0rick mux PMOD |
+
+The FFC approach (WULPUS) and SMA approach (pic0rick) represent opposite trade-offs. FFC is lighter and thinner — correct for a wearable where the transducer-to-PCB distance is millimetres and both are inside a silicone mold. SMA is heavier and bulkier but universal — any lab probe with an SMA pigtail works immediately. The FFC lock-in contributes directly to Vostrikov's sustainability obstacle #3 (see §5.6).
+
+---
+
+## 5.6 Open-Source Sustainability: Vostrikov's Three Obstacles
+
+*Source: Vostrikov, S. "Open-Source Wearable Ultrasound Platforms: A Rocky Path from Lab Prototype to Public Knowledge." IEEE CEEUS Workshop, Warsaw, 2026. (Rheonics GmbH / formerly ETH Zurich IIS/PULP.) PDF: `pdf/rheonics_ceeus2026.pdf`.*
+
+Vostrikov defines open-source hardware sustainability as a three-tier progression:
+
+> **Tier 1 — Public repo:** files are available  
+> **Tier 2 — Reproducible:** someone else can build it  
+> **Tier 3 — Sustainable:** the community can maintain it without the original authors
+
+Most systems reach Tier 1. Few reach Tier 3. The three obstacles he identifies are the barriers between tiers for WULPUS specifically, and for the wearable ultrasound open-source ecosystem generally.
+
+### Obstacle 1 — PCB tooling lock-in (Altium)
+
+WULPUS hardware source files are in Altium Designer format. Altium Designer costs approximately $10,000/year for a commercial licence. Anyone wanting to modify the PCB — change a connector, fix a layout bug, adapt for a different transducer, reduce board size — either needs Altium access or must work from the exported Gerbers and PDF schematics, which are read-only.
+
+This creates a *modification barrier*: replication (Tier 2) is achievable from Gerbers, but community modification (Tier 3) requires proprietary tooling. Vostrikov's recommendation: migrate to KiCad.
+
+**pic0rick position:** Uses KiCad exclusively. Any contributor can open, modify, and re-export the PCB source without cost. This is the correct design choice for a community-maintained platform.
+
+### Obstacle 2 — Multiple firmware toolchains
+
+WULPUS firmware requires three separate development environments:
+
+1. **TI Code Composer Studio (CCS)** — for the MSP430FR5043 acquisition MCU
+2. **Segger Embedded Studio** — for the nRF52832 BLE MCU on the probe
+3. **Nordic nRF5 SDK** — for the nRF52840 USB dongle firmware
+
+Each has its own installer, project format, and licensing model. Setting up a complete WULPUS build environment is a multi-hour exercise. A contributor who fixes one firmware bug must navigate three toolchains to test end-to-end. This creates a *reproduction barrier* for the firmware half of the project even when hardware Tier 2 is achieved.
+
+Vostrikov frames this as a consequence of the dual-MCU architecture: MSP430 (TI ecosystem) + nRF52 (Nordic ecosystem) = two incompatible toolchains by construction, plus a third for the dongle.
+
+**pic0rick position:** Uses a single toolchain — the Raspberry Pi Pico SDK (CMake, arm-none-eabi-gcc) — for all firmware. The host software is pure Python. One toolchain, one SDK, one Python environment.
+
+### Obstacle 3 — Transducer incompatibility
+
+WULPUS uses a Hirose DF52-16S-0.8H(21) flat flex connector (16-pin, 0.8 mm pitch) on the HV PCB, matched to its specific 8-element transducer array geometry. Standard commercial ultrasound probes — which use Lemo 00, BNC, SMA, Fischer, or proprietary connector types — do not plug into WULPUS without a custom adapter or re-wiring.
+
+This creates a *customisation barrier*: users cannot bring their own probe from an existing lab inventory. They are dependent on the specific transducer configurations the ETH group tested and qualified. Groups with different anatomical targets, frequencies, or probe geometries cannot simply swap the transducer.
+
+Vostrikov identifies this as the largest practical barrier to adoption outside specialist groups, because the transducer is often the most application-specific and irreplaceable part of a user's setup.
+
+**pic0rick position:** Uses SMA (JOHNSON 142-0701-801 edge-launch). SMA is a universal RF connector standard. Any commercial ultrasound probe with an SMA pigtail, and any home-built transducer with an SMA jack, connects directly. The MAX14866 mux PMOD adds an 8-element expansion path via a standard 2×8 header — accessible to any user with appropriate cabling, without a custom FFC harness.
+
+### Summary
+
+| Obstacle | WULPUS | pic0rick |
+|----------|--------|----------|
+| **1. PCB tooling** | Altium Designer (~$10k/yr) | KiCad (free, open source) |
+| **2. Firmware toolchains** | 3 (TI CCS + Segger + Nordic SDK) | 1 (Pico SDK + Python) |
+| **3. Transducer compatibility** | Proprietary FFC; custom transducer required | SMA; standard commercial probes compatible |
+| **Tier 3 (Sustainable) achievable?** | Barrier at all three | No barriers identified |
+
+Vostrikov's three-tier openness ratings from the CEEUS 2026 slides explicitly score pic0rick as: *"Open from inception, High reproducibility, Strong docs"* — the highest rating among the surveyed platforms. This matches the analysis above: pic0rick avoids all three obstacles by construction, not by retrofitting. The choice of KiCad, the Pico SDK, and SMA connectors are each individually mundane, but together they constitute a complete sustainability stack that WULPUS lacks.
