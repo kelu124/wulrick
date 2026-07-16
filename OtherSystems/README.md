@@ -9,6 +9,7 @@
 | System | Year | Venue | Platform | Ch | Weight | Power | Depth | Resolution |
 |--------|------|-------|----------|----|--------|-------|-------|-----------|
 | [WULPUS](WULPUS.md) | 2022 | IEEE IUS | MCU | 1 (8×mux) | ~14.95 g | **22 mW** | 4 cm | 5.5 µm |
+| [WULPUS PRO](WULPUS_PRO.md) | 2026 | arXiv 2607.12137 | MCU | 16×mux | **5 g** | 35–58 mW | ~4 cm | 0.7 mm (B-mode) |
 | [USoP](USoP.md) | 2023 | Nat. Biotech. | MCU | 1 | 16.2 g | 614 mW | 6 cm | 102.3 µm |
 | [EchoLite](EchoLite.md) | 2025 | IEEE IUS | MCU | 1 | **8.7 g** | 33 mW | 3 cm | 11 µm |
 | [TinyProbe](TinyProbe.md) | 2025 | IEEE T-UFFC | FPGA | **32** | 39.9 g | 30.3 mW/ch | **15 cm** | **2 µm** |
@@ -16,6 +17,7 @@
 
 *EchoLite: IEEE IUS 2025 paper not yet indexed as of 2026-06-30; specs from Anatomy slides only.*
 *PuLsE weight from volume estimate (12.6 cm³); not reported directly.*
+*WULPUS PRO resolution is B-mode imaging resolution; WULPUS resolution is A-mode displacement tracking precision — not directly comparable.*
 
 ---
 
@@ -42,6 +44,7 @@ The table below compares power efficiency normalized per channel:
 | EchoLite | 33 mW | 1 | 33 |
 | TinyProbe | ~970 mW (32×30.3) | 32 | 30.3 |
 | USoP | 614 mW | 1 | 614 |
+| WULPUS PRO | 35 mW (A-mode) / 58 mW (B-mode) | 16 mux | 35–58 per RX chain |
 
 *TinyProbe: "30.3 mW/ch" is the Anatomy slides' normalized metric. Total active power for 32-ch B-mode is <1 W per the TUFFC paper.*
 
@@ -92,7 +95,7 @@ None of the systems approaches the weight of clinical handheld probes (typically
 
 **WULPUS is the baseline** for this comparison — it set the power benchmark (22 mW) that the subsequent systems either approach (EchoLite at 33 mW, PuLsE at 5.8 mW) or exceed (TinyProbe at ~1 W active).
 
-The progression from WULPUS (2022) to TinyProbe (2025) within the same ETH group shows a deliberate escalation: each system traded power budget for imaging capability, guided by the "anatomy" principle (every echo must justify its cost). The Anatomy slides (2026) frame ModulUS as the next step: a fully reconfigurable sandbox where the right combination can be found per application.
+The progression from WULPUS (2022) to WULPUS PRO (2026) to TinyProbe (2025) within the same ETH group shows a deliberate escalation: each system traded power budget for imaging capability. WULPUS PRO (arXiv 2607.12137) is the direct successor to WULPUS: same MSP430FR5043 core, but with 16 channels (vs 8), analog TGC via AD8338 VGA (the key missing capability in WULPUS), ±30 V dual HV supply (LT3463) enabling CMUT transducer support, B-mode synthetic aperture imaging, and a reduced form factor (5 g vs 13 g). Core power rises to 35–58 mW (vs 22 mW for WULPUS) — a reasonable trade for the added capabilities. See `OtherSystems/WULPUS_PRO.md`. The Anatomy slides (2026) frame ModulUS as the next step: a fully reconfigurable sandbox where the right combination can be found per application.
 
 ---
 
