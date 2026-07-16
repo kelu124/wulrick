@@ -64,6 +64,27 @@ WULPUS is the only fully open-source HV implementation in OtherSystems (Altium s
 
 ---
 
+## WULPUS PRO
+
+**HV voltage:** +30 V (unipolar transmit) and −30 V (CMUT bias rail).
+**Topology:** Dual-output buck-boost DC-DC converter (single IC) stepping up from a single LiPo cell (~3.7 V nominal).
+**Key components:**
+- **LT3463** (Analog Devices) — monolithic dual DC-DC converter generating +30 V and −30 V from a single LiPo supply. Single chip replaces the two separate converters that separate HV TX and CMUT bias would otherwise require.
+- **HV2707** (Microchip) — 16-channel T/R mux, ±100 V rated, SPI-controlled. Same family as WULPUS; expanded from 8 to 16 channels.
+- **MD0100** (Microchip) — passive T/R limiter, ±2.5 V clamping, ~5 µs RX recovery. Downgraded from MD0101 (active, 100 ns recovery) used in WULPUS — larger near-field dead zone.
+- **IXDD604** (Littelfuse) — tri-state MOSFET gate driver; steps 3.3 V PPG signal from MSP430 to 30 V for the pulser switch.
+
+**Gating:** Pulsed at 50–300 Hz PRF (mode-dependent). The LT5507 envelope detector can optionally replace direct RF sampling for transducers above the system's 1.4 MHz −3 dB bandwidth. The −30 V rail is unused in piezoelectric-only mode; active only when CMUT biasing is required.
+
+**Notable design choices:**
+- **+30 V vs WULPUS +15 V:** Doubling the TX voltage provides 4× the acoustic pressure — but the primary driver is CMUT operation, not depth. CMUT transducers require a DC bias voltage (10–40 V typically) to pull membranes into their operating regime; the WULPUS +15 V supply is insufficient.
+- **LT3463 dual-output:** A single IC generates both +30 V and −30 V, enabling direct bias (simultaneous ±30 V on CMUT top/bottom electrodes) or indirect bias (−30 V to CMUT ground reference). This halves the HV IC count versus a dual single-output approach.
+- **AC-coupled RX path:** Input is capacitively coupled, allowing the front-end to handle both piezoelectric transducers (no DC bias needed) and CMUTs (DC bias present on element) without redesigning the signal path.
+
+Full design: `OtherSystems/WULPUS_PRO.md`. GitHub: https://github.com/pulp-bio/wulpus-pro
+
+---
+
 ## Weik 2026 Review
 
 Survey paper (IEEE Reviews in Biomedical Engineering 2026) — introduces no new HV hardware. No specific HV topology, voltage, or component is documented. Relevant observation: the review notes that HV supply design for wearable ultrasound remains "ad hoc" across the field, and that application depth requirements (blood pressure ~2 cm vs cardiac ~15 cm) drive a wide range of transmit voltages with no standardisation across research groups.
@@ -104,5 +125,6 @@ Full design: `OtherSystems/pic0rick_ports.md`.
 | TinyProbe | 64 Vpp | Custom FPGA-driven HV driver | Custom ASIC (ETH) | 32 simultaneous | 15 cm depth; skin-contact safety noted |
 | USoP | ~10–30 V (est.) | Embedded in flex patch (unknown) | — | 1 | 614 mW; closed design; conformal patch |
 | WULPUS | +15 V | Boost converter (LiPo → +15 V) | HV2707, MD0101, MCP1416 | 8 (time-mux) | Open-source; 22 mW; 4 cm depth |
+| WULPUS PRO | +30 V / −30 V | Dual DC-DC buck-boost (LT3463) | LT3463, HV2707, MD0100, IXDD604 | 16 (time-mux) | CMUT-capable; 35–58 mW; open-source |
 | Weik 2026 | N/A (survey) | N/A | — | N/A | Notes HV design is "ad hoc" across field |
 | pic0rick | ±24 V | Isolated DC-DC (R2D-0524_P) | MD0100/MD0101, MD1213, MAX14866 opt. | 1 + opt. 8 | USB-powered; bipolar; isolated; open design |
