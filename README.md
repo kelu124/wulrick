@@ -53,7 +53,7 @@ All analysis is derived from schematics, PCB files, component datasheets, and pu
 ### What Neither Device Covers Well
 
 - **Transducers above 4 MHz with low power** — pic0rick handles high frequencies but is USB-tethered and power-hungry; WULPUS is low-power but ADC-limited to ≤3 MHz.
-- **Time-gain compensation in a wearable** — neither device supports true TGC (monotonically increasing gain over the receive window). WULPUS-Pro is planned to address this.
+- **Time-gain compensation in a wearable** — neither original device supports true TGC. WULPUS PRO (2026, arXiv 2607.12137) addresses this with an AD8338 VGA driven by an RC ramp: 40 dB TGC slope at 35 mW core power, 5 g, 39×21 mm. See `OtherSystems/WULPUS_PRO.md` and `AD833x.md`.
 - **Real-time 2D B-mode** — both can produce B-mode offline, but neither supports real-time multi-element beamforming. pic0rick lacks on-board compute; WULPUS's BLE bottleneck prevents data rates needed for real-time reconstruction.
 - **Coherent multi-element arrays out of the box** — both support up to 8 channels, but full 32-channel synthetic aperture requires additional hardware (cascaded mux PMODs for pic0rick; custom HV PCB for WULPUS).
 
@@ -68,7 +68,7 @@ All analysis is derived from schematics, PCB files, component datasheets, and pu
 | [`phase2.md`](phase2.md) | Hardware performance master table with typed specs (M/D/C/E) |
 | [`phase3.md`](phase3.md) | Software and firmware ecosystem; data pipeline traces |
 | [`phase4.md`](phase4.md) | Per-device strengths, weaknesses, specificities; published benchmarks |
-| [`phase5.md`](phase5.md) | Licenses, PCB tools, cost, community metrics, reproducibility |
+| [`phase5.md`](phase5.md) | Licenses, PCB tools, cost, community metrics, reproducibility; §5.5 transducer connectors; §5.6 Vostrikov's three open-source sustainability obstacles |
 | [`phase6.md`](phase6.md) | Synthesis: master table, device cards, design decisions, gap analysis, cross-pollination, decision guide |
 | [`picorecommendation.md`](picorecommendation.md) | What pic0rick does well; hardware and software improvements inspired by WULPUS |
 | [`MSP430FR5043.md`](MSP430FR5043.md) | Deep dive on the MSP430FR5043 MCU: USS_A module, ADC, PGA, FRAM, DMA, power modes |
@@ -79,6 +79,14 @@ All analysis is derived from schematics, PCB files, component datasheets, and pu
 | [`w_uses.md`](w_uses.md) | All known research uses of WULPUS: 7 papers with full citations |
 | [`link.md`](link.md) | Research source tracker |
 | [`todo.md`](todo.md) | Completed items + 8 documented open gaps |
+| [`CH569.md`](CH569.md) | CH569 USB3 HSPI bridge deep dive: serial SPI (9.4 MB/s) vs 8-bit PIO HSPI (~50–60 MB/s) vs 16-bit PIO HSPI (~100–120 MB/s); RP2350B GPIO/PIO programs for ultr4rick |
+| [`FT2232H.md`](FT2232H.md) | RP2350B HSTX + FT2232H synchronous FIFO mode: ~40 MB/s to USB host; PIO-based clock sync; pin mapping |
+| [`M33FPUHILBERT.md`](M33FPUHILBERT.md) | On-device Hilbert envelope detection on RP2350 Cortex-M33 FPU: ~92 µs for 4096 pt; CMSIS-DSP implementation |
+| [`AD833x.md`](AD833x.md) | AD8331 vs AD8332 vs AD8338 VGA: NF, BW, gain range, power, supply, TGC implementation; design decision guide |
+| [`HV.md`](HV.md) | HV source survey across all OtherSystems: voltages, topologies, key ICs (LT3463, HV2707, MD0100/101, IXDD604, R2D-0524_P) |
+| [`newdesigntodo.md`](newdesigntodo.md) | ultr4rick design opportunity notes: FT2232H path, M33 Hilbert, SEPIC HV, SD card, MAX14866 |
+| [`references_to_check.md`](references_to_check.md) | Academic papers 2024–2026 citing un0rick/pic0rick/Jonveaux: 13 confirmed + 2 inaccessible; full citations |
+| [`OtherSystems/`](OtherSystems/) | Survey of external wearable ultrasound platforms: EchoLite, PuLsE, TinyProbe, USoP, WULPUS, WULPUS PRO, Weik 2026, pic0rick ports |
 
 ---
 
@@ -113,6 +121,24 @@ Full details in [`array_sourcing.md`](array_sourcing.md).
 
 ---
 
+## OtherSystems: Extended Platform Survey
+
+`OtherSystems/` documents the broader wearable ultrasound ecosystem beyond pic0rick and WULPUS. All analysis from public documentation, arXiv papers, and GitHub repositories.
+
+| System | Year | Type | Channels | Core power | TX voltage | Key feature |
+|--------|------|------|----------|------------|------------|-------------|
+| [EchoLite](OtherSystems/EchoLite.md) | 2026 | MCU | 1 | 33 mW | Unknown | IEEE CEEUS 2026; hardware not public |
+| [PuLsE](OtherSystems/PuLsE.md) | 2025 | Custom MCU | 1 | **5.8 mW** | <15 V est. | Lowest power of any system; analog envelope; no mux |
+| [TinyProbe](OtherSystems/TinyProbe.md) | 2025 | FPGA | 32 parallel | 430–830 mW | 64 Vpp | 15 cm depth; real-time Doppler; ETH Zurich |
+| [USoP](OtherSystems/USoP.md) | 2021 | Custom | 1 | 614 mW | ~10–30 V | Flexible skin patch; Nature Biotech; closed design |
+| [WULPUS](OtherSystems/WULPUS.md) | 2022 | MCU | 8 mux | 22 mW | +15 V | Original open-source wearable; BLE; 4 cm depth |
+| [WULPUS PRO](OtherSystems/WULPUS_PRO.md) | 2026 | MCU | 16 mux | 35–58 mW | +30 V / −30 V | TGC (AD8338), CMUT support, B-mode SA imaging, 5 g |
+| [pic0rick (ports)](OtherSystems/pic0rick_ports.md) | 2024 | RP2040 | 1+opt.8 | ~300–400 mW | ±24 V | USB; 65 Msps; Transplant 3B analysis |
+
+WULPUS PRO (arXiv 2607.12137, github.com/pulp-bio/wulpus-pro) is the most relevant: it directly extends WULPUS with TGC via the AD8338 VGA, CMUT support via LT3463 ±30V dual-output supply, 16-channel time-mux, and B-mode synthetic aperture imaging — while retaining the same MSP430FR5043 acquisition core and 8 Msps ceiling. See `AD833x.md` for the VGA chip comparison and `HV.md` for the HV topology survey across all systems.
+
+---
+
 ## pic0rick Recommendations
 
 Full details in [`picorecommendation.md`](picorecommendation.md).
@@ -138,7 +164,7 @@ From the review pass documented in `todo.md`:
 1. WULPUS HV mux chip identity unconfirmed (provisionally HV2707T-C/R8X)
 2. MSP430FR5043 SDHS ENOB unpublished by TI
 3. pic0rick system SNR uncharacterized (no phantom measurements published)
-4. WULPUS-Pro: referenced in papers but no public repository as of 2026-06
+4. ~~WULPUS-Pro: referenced in papers but no public repository as of 2026-06~~ **Resolved.** Published June 2026 (arXiv 2607.12137); repo at github.com/pulp-bio/wulpus-pro. Documented in `OtherSystems/WULPUS_PRO.md`.
 5. Vermon 32-ch adapter PCB: analysis done, physical design not yet built
 6. Array pricing estimates need direct quotation from manufacturers
 7. M-mode GUI support for WULPUS: open question, no documented answer
@@ -146,4 +172,4 @@ From the review pass documented in `todo.md`:
 
 ---
 
-*Research compiled by loup (NanoClaw agent) for Luc, 2026-06. All analysis from public datasheets and published papers; no physical hardware was available for testing.*
+*Research compiled by loup (NanoClaw agent) for Luc, 2026-06 through 2026-07. All analysis from public datasheets and published papers; no physical hardware was available for testing.*
