@@ -16,6 +16,17 @@ The methodology is designed to be reproducible: another agent with access to the
 
 The comparison between **pic0rick** (kelu124/pic0rick) and **WULPUS** (pulp-bio/wulpus) is complete across seven phases. All output lives in the **kelu124/wulrick** GitHub repository.
 
+Additional work completed as of 2026-07:
+- **OtherSystems survey** (`OtherSystems/`) — eight platforms: EchoLite, PuLsE, TinyProbe, USoP, WULPUS, WULPUS PRO, Weik 2026 review, pic0rick ports analysis (Transplant 3B)
+- **WULPUS PRO deep dive** (`OtherSystems/WULPUS_PRO.md`) — arXiv 2607.12137: 5 g, 16-ch, TGC via AD8338, CMUT support, LT3463 ±30 V supply, B-mode SA imaging
+- **HV sources survey** (`HV.md`) — topology, voltage, and key ICs across all OtherSystems
+- **AD833x VGA comparison** (`AD833x.md`) — AD8331 vs AD8332 vs AD8338: NF, BW, gain law, power, supply, TGC design guide
+- **CH569 USB3 bridge analysis** (`CH569.md`) — serial SPI vs 8-bit vs 16-bit HSPI via RP2350B PIO; full GPIO assignment and PIO programs
+- **FT2232H synchronous FIFO** (`FT2232H.md`) — RP2350B HSTX + FT2232H: ~40 MB/s to USB host; PIO clock sync
+- **M33 FPU Hilbert** (`M33FPUHILBERT.md`) — on-device envelope detection on RP2350 Cortex-M33: ~92 µs for 4096 pt
+- **Academic references** (`references_to_check.md`) — 2024–2026 papers citing un0rick/pic0rick/Jonveaux: 13 confirmed + 2 inaccessible
+- **ultr4rick design notes** (`newdesigntodo.md`) — HV, data path, and signal chain opportunities for the next board
+
 See `README.md` for a summary of findings and the full file list. See `todo.md` for what's done and what open gaps remain.
 
 ---
@@ -74,7 +85,26 @@ wulrick/
 ├── TUSvsMSP.md         ← TUSS4470 vs MSP430FR5043 comparative analysis
 ├── array_sourcing.md   ← Sourcing guide: transducers and arrays for each platform
 ├── w_discussions.md    ← WULPUS GitHub Discussions/Issues + Vermon 32-ch analysis
-└── w_uses.md           ← All known WULPUS research uses (7 papers, full citations)
+├── w_uses.md           ← All known WULPUS research uses (7 papers, full citations)
+│
+├── CH569.md            ← CH569 USB3 HSPI: SPI vs 8-bit vs 16-bit PIO; RP2350B GPIO/PIO programs
+├── FT2232H.md          ← RP2350B HSTX + FT2232H sync FIFO: ~40 MB/s to host; PIO clock sync
+├── M33FPUHILBERT.md    ← RP2350 M33 FPU Hilbert: ~92 µs / 4096 pt; CMSIS-DSP pipeline
+├── AD833x.md           ← AD8331 vs AD8332 vs AD8338 VGA: NF, BW, gain, power, supply, TGC guide
+├── HV.md               ← HV topology survey: voltages, ICs, design choices across all OtherSystems
+├── newdesigntodo.md    ← ultr4rick design opportunities: FT2232H, Hilbert, SEPIC, SD card, mux
+├── references_to_check.md ← 2024–2026 academic citations of un0rick/pic0rick/Jonveaux
+│
+└── OtherSystems/       ← External wearable ultrasound platforms survey
+    ├── README.md       ← Index: comparison table + synthesis across 8 systems
+    ├── EchoLite.md     ← EchoLite (IEEE CEEUS 2026): 33 mW; hardware not public
+    ├── PuLsE.md        ← PuLsE (2025): 5.8 mW; single-element wrist; analog envelope
+    ├── TinyProbe.md    ← TinyProbe (ETH 2025): 32 ch; 64 Vpp; 15 cm depth; FPGA
+    ├── USoP.md         ← USoP (Nature Biotech 2021): flexible patch; 614 mW; closed
+    ├── WULPUS.md       ← WULPUS (2022): 22 mW; 8-ch BLE; original open wearable
+    ├── WULPUS_PRO.md   ← WULPUS PRO (arXiv 2607.12137): 5 g; TGC; CMUT; B-mode; ±30 V
+    ├── Weik2026.md     ← Weik review (IEEE RBME 2026): wearable US survey paper
+    └── pic0rick_ports.md ← pic0rick port analysis: Transplant 3A/3B; CH569; RP2350B
 ```
 
 ---
@@ -165,7 +195,7 @@ EOF
 - Firmware: 3 separate C projects (TI CCS for MSP430, Segger Embedded Studio for nRF52832, Nordic SDK for dongle)
 - PCB: Altium (≈$10k/yr license); Gerbers exported for fabrication
 - License: SHL-0.51 (hardware) + Apache 2.0 (software) — permissive
-- WULPUS-Pro: referenced, not yet public — 16 ch, +30V, programmable TGC, CMUT bias, 100 kHz–10 MHz
+- WULPUS PRO: published June 2026 (arXiv 2607.12137, github.com/pulp-bio/wulpus-pro) — 16 ch time-mux, +30V/−30V (LT3463), AD8338 TGC (40 dB slope), CMUT bias, B-mode SA imaging, 35–58 mW, 5 g, 39×21 mm; MSP430FR5043 core unchanged (8 Msps ceiling). See `OtherSystems/WULPUS_PRO.md`.
 
 ### TUSS4470 (TI)
 - Standalone AFE IC — **no ADC, no MCU**
@@ -230,4 +260,4 @@ EOF
 
 **MSP430FR5043 ENOB not published:** TI does not publish an ENOB figure for the USS_A SDHS ADC. This is the single most important uncharacterized spec for dynamic range assessment. Cannot be filled without bench measurement or TI application engineering contact.
 
-**WULPUS-Pro not yet public:** Referenced in multiple papers and the README as the successor platform (16 ch, +30V, programmable TGC, CMUT bias, 100 kHz–10 MHz). Monitor pulp-bio GitHub for new repositories. As of 2026-06, no public repository exists.
+**WULPUS PRO now public:** Published June 2026 on arXiv (2607.12137) with public repo at github.com/pulp-bio/wulpus-pro. Full documentation in `OtherSystems/WULPUS_PRO.md`. The prior gap (no public repo) is resolved.
