@@ -196,3 +196,65 @@ The following 5 papers were added explicitly. Metadata extracted where accessibl
 | 5.5 | SSRN 6946751 | — | — | SSRN | — | ⚠ inaccessible |
 
 *lit32rick: no papers found referencing this board by name in academic databases (2024–2026).*
+
+---
+
+## 6. Papers NOT Yet on un0rick.cc/research
+
+*Cross-referenced against https://un0rick.cc/research on 2026-07-21. All papers in sections 1–3 are already listed on the research page. The following are catalogued here but absent from the site.*
+
+### 6.1 Non-uniform Lagrange interpolation for B-mode ultrasound reconstruction
+
+- **Title:** Non-uniform Lagrange interpolation in B-mode ultrasound image reconstruction
+- **Authors:** The-Lam Nguyen, Van-Duong Nguyen, Quang-Huy Tran
+- **Year:** 2026
+- **Journal:** HPU2 Journal of Science: Natural Sciences and Technology, Vol. 5 No. 01, pp. 27–34
+- **DOI:** [10.56764/hpu2.jos.2026.5.01.27-34](https://doi.org/10.56764/hpu2.jos.2026.5.01.27-34)
+- **URL:** https://sj.hpu2.edu.vn/index.php/journal/article/view/578
+- **Why it belongs:** B-mode ultrasound reconstruction paper from a Vietnamese university — added by Luc for cross-checking, likely cites pic0rick or un0rick as acquisition hardware. On-topic and recent.
+- **Action:** Add to un0rick.cc/research once citation confirmed.
+
+### 6.2 100-Gb/s RDMA streaming for ultrafast optoacoustic and ultrasound imaging
+
+- **Title:** Validation of a Software-Defined 100-Gb/s RDMA Streaming Architecture for Ultrafast Optoacoustic and Ultrasound Imaging
+- **Authors:** Federico Villani, Christian Vogt, Luca Specht, Jero Schmid, Xiang Liu, Andrea Cossettini, Daniel Razansky, Luca Benini (ETH Zurich / University of Zurich)
+- **Year:** 2026
+- **Venue:** arXiv (eess.SY)
+- **DOI:** [10.48550/arXiv.2601.18280](https://doi.org/10.48550/arXiv.2601.18280)
+- **URL:** https://arxiv.org/abs/2601.18280
+- **Why it belongs:** From the ETH Zurich PULP group (same authors as WULPUS PRO). High-speed data streaming for ultrasound — plausibly cites pic0rick or Luc's work as low-cost comparison. Added by Luc for cross-checking.
+- **Action:** Verify the citation in the paper, then add to site.
+
+### 6.3 IEEE Xplore document 11536413
+
+- **Title:** *(not retrieved — IEEE bot protection returned HTTP 418)*
+- **Authors:** Not retrieved
+- **Year:** Not retrieved
+- **URL:** https://ieeexplore.ieee.org/abstract/document/11536413/
+- **Status:** ⚠ Metadata inaccessible programmatically — check manually
+- **Action:** Open in browser, confirm title and whether it cites un0rick/pic0rick/Jonveaux. If yes, add to site.
+
+### 6.4 SSRN preprint 6946751
+
+- **Title:** *(not retrieved — SSRN returned HTTP 403)*
+- **Authors:** Not retrieved
+- **Year:** Not retrieved
+- **URL:** https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6946751
+- **Status:** ⚠ Metadata inaccessible programmatically — check manually
+- **Action:** Open in browser, confirm content and citation. If it cites Luc's work, add to site.
+
+### 6.5 Optically emulated CT scanner for college education
+
+- **Title:** Development of an optically emulated computed tomography scanner for college education
+- **Authors:** Md. Motaleb Hossen Manik, William Muldowney, Md. Zabirul Islam, Ge Wang
+- **Year:** 2026
+- **Journal:** Visual Computing for Industry, Biomedicine, and Art
+- **DOI:** [10.1186/s42492-025-00211-z](https://doi.org/10.1186/s42492-025-00211-z)
+- **URL:** https://link.springer.com/article/10.1186/s42492-025-00211-z
+- **Note:** This is a CT (computed tomography) education paper, not an ultrasound paper. The connection to un0rick/pic0rick is not obvious from the title. Added by Luc for cross-checking — confirm whether it actually cites Jonveaux/un0rick before adding to site. May be a false positive.
+
+---
+
+### Additional discrepancy: pic0rick Zenodo DOI
+
+The site (un0rick.cc/research entry #1) lists the pic0rick paper with DOI `10.5281/zenodo.10968503`, but our record (§4.1) uses `10.5281/zenodo.10968504`. These are consecutive Zenodo record IDs — likely two versions of the same deposit (Zenodo assigns new DOIs to each version). Verify which is the canonical/latest version and ensure the site links to the correct one.
