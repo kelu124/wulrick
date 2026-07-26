@@ -154,14 +154,16 @@ The following 5 papers were added explicitly. Metadata extracted where accessibl
 - **DOI:** [10.48550/arXiv.2601.18280](https://doi.org/10.48550/arXiv.2601.18280)
 - **Status:** ✓ Metadata verified via arXiv page
 
-### 5.4 IEEE Xplore document 11536413
+### 5.4 A Robotic Simulation Environment for Ultrasound Imaging of Soft Tissue
 
-- **URL:** https://ieeexplore.ieee.org/abstract/document/11536413/
-- **Title:** *(not retrieved — IEEE bot protection returned HTTP 418)*
-- **Authors:** Not retrieved
-- **Year:** Not retrieved
-- **DOI:** Not retrieved
-- **Status:** ⚠ Metadata not accessible programmatically — check manually via IEEE Xplore
+- **Title:** A Robotic Simulation Environment for Ultrasound Imaging of Soft Tissue
+- **Authors:** Jintan Zhang, Yixuan Wu, Adnan Munawar, Peter Kazanzides
+- **Year:** 2026
+- **Venue:** International Symposium on Medical Robotics (ISMR 2026)
+- **DOI:** [10.1109/ISMR69606.2026.11536413](https://doi.org/10.1109/ISMR69606.2026.11536413)
+- **URL:** https://ieeexplore.ieee.org/document/11536413/
+- **Content:** Integrates Isaac Sim FEM-based soft tissue deformation with k-Wave acoustic simulation for robotic ultrasound prototyping. Validates B-mode imaging via Universal Robots with 1 cm tissue compression. Novel algorithm for maintaining acoustic property distributions across deforming FEM meshes.
+- **Status:** ✓ Resolved — **not relevant to ultr4rick**. Pure simulation paper; no hardware, no ADC, no open-source platform. Does not cite pic0rick, un0rick, or Jonveaux. Medical robotics / simulation, not ultrasound acquisition hardware.
 
 ### 5.5 SSRN preprint abstract_id=6946751
 
@@ -192,7 +194,7 @@ The following 5 papers were added explicitly. Metadata extracted where accessibl
 | 5.1 | Optically emulated CT scanner | Manik et al. | 2026 | Vis Comput Ind Biomed Art | 10.1186/s42492-025-00211-z | ✓ |
 | 5.2 | B-mode Lagrange interpolation | Nguyen et al. | 2026 | HPU2 Journal | 10.56764/hpu2.jos.2026.5.01.27-34 | ✓ |
 | 5.3 | 100-Gb/s RDMA optoacoustic | Villani, Cossettini et al. | 2026 | arXiv | 10.48550/arXiv.2601.18280 | ✓ |
-| 5.4 | IEEE 11536413 | — | — | IEEE | — | ⚠ inaccessible |
+| 5.4 | Robotic simulation for US imaging | Zhang, Wu, Munawar, Kazanzides | 2026 | ISMR 2026 | 10.1109/ISMR69606.2026.11536413 | ✗ not relevant |
 | 5.5 | SSRN 6946751 | — | — | SSRN | — | ⚠ inaccessible |
 
 *lit32rick: no papers found referencing this board by name in academic databases (2024–2026).*
@@ -225,14 +227,14 @@ The following 5 papers were added explicitly. Metadata extracted where accessibl
 - **Why it belongs:** From the ETH Zurich PULP group (same authors as WULPUS PRO). High-speed data streaming for ultrasound — plausibly cites pic0rick or Luc's work as low-cost comparison. Added by Luc for cross-checking.
 - **Action:** Verify the citation in the paper, then add to site.
 
-### 6.3 IEEE Xplore document 11536413
+### 6.3 A Robotic Simulation Environment for Ultrasound Imaging of Soft Tissue *(resolved — not for site)*
 
-- **Title:** *(not retrieved — IEEE bot protection returned HTTP 418)*
-- **Authors:** Not retrieved
-- **Year:** Not retrieved
-- **URL:** https://ieeexplore.ieee.org/abstract/document/11536413/
-- **Status:** ⚠ Metadata inaccessible programmatically — check manually
-- **Action:** Open in browser, confirm title and whether it cites un0rick/pic0rick/Jonveaux. If yes, add to site.
+- **Title:** A Robotic Simulation Environment for Ultrasound Imaging of Soft Tissue
+- **Authors:** Jintan Zhang, Yixuan Wu, Adnan Munawar, Peter Kazanzides (Johns Hopkins University)
+- **Year:** 2026
+- **Venue:** ISMR 2026 (International Symposium on Medical Robotics)
+- **DOI:** [10.1109/ISMR69606.2026.11536413](https://doi.org/10.1109/ISMR69606.2026.11536413)
+- **Status:** ✓ Checked 2026-07-26 — **do not add to un0rick.cc/research**. Simulation-only paper (Isaac Sim + k-Wave); no hardware, no open-source platform citations. Does not reference pic0rick, un0rick, or Jonveaux. Tangentially related (ultrasound B-mode + k-Wave) but no citation connection.
 
 ### 6.4 SSRN preprint 6946751
 
