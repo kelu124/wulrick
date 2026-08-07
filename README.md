@@ -172,4 +172,4 @@ From the review pass documented in `todo.md`:
 
 ---
 
-*Research compiled by loup (NanoClaw agent) for Luc, 2026-06 through 2026-07. All analysis from public datasheets and published papers; no physical hardware was available for testing.*
+*Research compiled by loup (NanoClaw agent) for Luc, 2026-06 through 2026-08. All analysis from public datasheets and published papers; no physical hardware was available for testing.*
